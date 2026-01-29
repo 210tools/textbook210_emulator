@@ -29,11 +29,11 @@
 
 The stable release can be found at [210tools.github.io](https://210tools.github.io).
 
-A version of the website that is always up to date as long as the code compiles can be found [here](https://jackcrumpleys.github.io/textbook210_emulator/).
+A version of the website that is always up to date as long as the code compiles can be found [here](https://210tools.github.io/textbook210_emulator/).
 
 ### Offline Use
 
-You can download the standalone application for offline use from the [releases page](https://github.com/JackCrumpLeys/textbook210_emulator/releases/tag/main). (Note that this is the bleeding edge and might be buggy)
+You can download the standalone application for offline use from the [releases page](https://github.com/210tools/textbook210_emulator/releases/tag/main). (Note that this is the bleeding edge and might be buggy)
 
 ## 📝 Quick Guide
 
