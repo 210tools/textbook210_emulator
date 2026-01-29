@@ -20,12 +20,6 @@ pub enum AddOp {
         sr1: EmulatorCell,
         sr2: EmulatorCell,
     },
-    /// We have 2 values and a destination register ready to invoke alu
-    Ready {
-        dr: EmulatorCell,
-        op1: EmulatorCell,
-        op2: EmulatorCell,
-    },
 }
 
 impl MicroOpGenerator for AddOp {
@@ -57,24 +51,6 @@ impl MicroOpGenerator for AddOp {
                 );
 
                 // Store Result phase
-                plan.insert(
-                    CycleState::StoreResult,
-                    vec![
-                        micro_op!(R(dr.get()) <- AluOut),
-                        micro_op!(SET_CC(dr.get())),
-                    ],
-                );
-            }
-            AddOp::Ready { dr, .. } => {
-                // This state is part of the legacy execution path and is not expected
-                // when generating a micro-op plan from a decoded instruction.
-                // We provide a fallback for completeness, but this branch should not be
-                // taken in the micro-op execution flow.
-                plan.insert(
-                    CycleState::Execute,
-                    vec![micro_op!(ALU_OUT <- R(0) + R(0))], // Placeholder
-                );
-
                 plan.insert(
                     CycleState::StoreResult,
                     vec![
@@ -134,15 +110,6 @@ impl fmt::Display for AddOp {
             }
             AddOp::Register { dr, sr1, sr2 } => {
                 write!(f, "ADD R{}, R{}, R{}", dr.get(), sr1.get(), sr2.get())
-            }
-            AddOp::Ready { dr, op1, op2 } => {
-                write!(
-                    f,
-                    "ADD R{}, x{:02X}, x{:02X}",
-                    dr.get(),
-                    op1.get(),
-                    op2.get()
-                )
             }
         }
     }
