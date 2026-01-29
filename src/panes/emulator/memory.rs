@@ -174,6 +174,8 @@ impl PaneDisplay for MemoryPane {
                             200,
                             (255.0 * *hl) as u8, // purple that fades out
                         ))
+                    } else if is_pc_line {
+                        Some(theme.accent_color_positive.gamma_multiply(0.7))
                     } else {
                         None // Use striped background
                     };

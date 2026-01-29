@@ -247,24 +247,22 @@ impl CpuStatePane {
             CpuState::ExecuteOperation(_) => 4,
             CpuState::StoreResult(_) => 5,
         };
-        let mut instr_txt = emulator
+
+        let ir_formatted = &format!("{:#04X}", emulator.ir.get());
+        let instr_txt = emulator
             .metadata
             .address_to_line
             .get(&emulator.currently_executing)
-            .map(|x| {
+            .and_then(|x| {
                 emulator
                     .metadata
                     .last_compiled_source
                     .get(*x - 1)
-                    .unwrap()
-                    .clone()
+                    .map(String::as_str)
             })
-            .unwrap_or(format!("{:#04X}", emulator.ir.get()));
-        ui.add(
-            egui::TextEdit::singleline(&mut instr_txt)
-                .code_editor()
-                .interactive(false),
-        );
+            .unwrap_or(ir_formatted.as_str());
+        ui.label(instr_txt);
+
         // Display cycle list
         ui.label(RichText::new("CPU Pipeline Stages:").strong());
         for (i, cycle_name_str) in cycle_names.iter().enumerate() {

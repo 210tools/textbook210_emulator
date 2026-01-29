@@ -536,11 +536,12 @@ impl Emulator {
                 micro_op!(MAR <- PC),
                 micro_op!(ALU_OUT <- PC + C(1)),
                 micro_op!(PC <- AluOut),
+                micro_op!(-> Fetch),
+                micro_op!(IR <- MDR),
             ],
             // Phase 1: Decode
             vec![
                 micro_op!(-> Decode),
-                micro_op!(IR <- MDR),
                 micro_op!(MSG format!("Instruction decoded: {}", opcode)),
             ],
             // Phase 2: EvaluateAddress

@@ -21,12 +21,6 @@ pub enum AndOp {
         sr1: EmulatorCell,
         sr2: EmulatorCell,
     },
-    /// We have 2 values ready to pipe into alu (then store at given register)
-    Ready {
-        dr: EmulatorCell,
-        op1: EmulatorCell,
-        op2: EmulatorCell,
-    },
 }
 
 impl MicroOpGenerator for AndOp {
@@ -58,22 +52,6 @@ impl MicroOpGenerator for AndOp {
                 );
 
                 // Store Result phase
-                plan.insert(
-                    CycleState::StoreResult,
-                    vec![
-                        micro_op!(R(dr.get()) <- AluOut),
-                        micro_op!(SET_CC(dr.get())),
-                    ],
-                );
-            }
-            AndOp::Ready { dr, .. } => {
-                // This shouldn't be used for micro-op generation as it represents
-                // runtime state, but provide a fallback
-                plan.insert(
-                    CycleState::Execute,
-                    vec![micro_op!(ALU_OUT <- R(0) & R(0))], // Placeholder
-                );
-
                 plan.insert(
                     CycleState::StoreResult,
                     vec![
@@ -135,15 +113,6 @@ impl fmt::Display for AndOp {
                     sr1.get(),
                     imm_val_sext, // Display sign-extended decimal
                     imm_val_5bit  // Display raw 5-bit hex
-                )
-            }
-            AndOp::Ready { dr, op1, op2 } => {
-                write!(
-                    f,
-                    "AND R{}, x{:02X}, x{:02X}",
-                    dr.get(),
-                    op1.get(),
-                    op2.get()
                 )
             }
         }

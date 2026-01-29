@@ -82,7 +82,7 @@ impl fmt::Display for MAluOp {
 /// Represents a source of data for an operation.
 #[derive(Debug, Clone)]
 pub enum DataSource {
-    Register(u16),
+    Register(u16), // R0 - R7
     PC,
     IR,
     MAR,
@@ -91,7 +91,7 @@ pub enum DataSource {
     AluOut,
     Temp,
 
-    Immediate(i16),
+    Immediate(i16), // #{16 bit signed number}
     PCOffset(i16),
     TrapVector(u8),
     Constant(u16),

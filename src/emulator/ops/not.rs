@@ -11,10 +11,6 @@ pub enum NotOp {
         dr: EmulatorCell, // Destination register index
         sr: EmulatorCell, // Source register index
     },
-    Ready {
-        dr: EmulatorCell, // Destination register index
-        op: EmulatorCell, // Fetched source operand
-    },
 }
 
 impl MicroOpGenerator for NotOp {
@@ -30,22 +26,6 @@ impl MicroOpGenerator for NotOp {
                 );
 
                 // Store Result phase
-                plan.insert(
-                    CycleState::StoreResult,
-                    vec![
-                        micro_op!(R(dr.get()) <- AluOut),
-                        micro_op!(SET_CC(dr.get())),
-                    ],
-                );
-            }
-            NotOp::Ready { dr, .. } => {
-                // This shouldn't be used for micro-op generation as it represents
-                // runtime state, but provide a fallback
-                plan.insert(
-                    CycleState::Execute,
-                    vec![micro_op!(ALU_OUT <- NOT R(0))], // Placeholder
-                );
-
                 plan.insert(
                     CycleState::StoreResult,
                     vec![
@@ -76,9 +56,6 @@ impl fmt::Display for NotOp {
         match self {
             NotOp::Decoded { dr, sr } => {
                 write!(f, "NOT R{}, R{}", dr.get(), sr.get())
-            }
-            NotOp::Ready { dr, op } => {
-                write!(f, "not R{}, x{:04X}", dr.get(), op.get())
             }
         }
     }

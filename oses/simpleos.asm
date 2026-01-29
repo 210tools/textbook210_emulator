@@ -28,7 +28,6 @@
         .ORIG x0000
 
 ; TRAP vector table
-; (yes I know I can use a loop but I decided this was more clear)
         .FILL BAD_TRAP   ; x00
         .FILL BAD_TRAP   ; x01
         .FILL BAD_TRAP   ; x02
@@ -692,22 +691,61 @@ TRAP_IN
         ADD R6, R6, #1
         RTI
 
-TRAP_PUTSP ; TODO: I want to focus on what we are doing in class
-        BRNZP BAD_TRAP
+TRAP_PUTSP
+	; NOTE: This trap will end when it sees any NUL, even in
+	; packed form, despite the P&P second edition's requirement
+	; of a double NUL.
 
+        ADD R6, R6, #-1
+	STR R0,R6,#0 		; Push R0 
+        ADD R6, R6, #-1
+	STR R1,R6,#0            ; Push R1 
+        ADD R6, R6, #-1
+	STR R2,R6,#0            ; Push R2 
+        ADD R6, R6, #-1
+	STR R3,R6,#0            ; Push R3 
+        ADD R6, R6, #-1
+	STR R7,R6,#0            ; Push R7 
+	ADD R1,R0,#0		; move string pointer (R0) into R1
+
+TRAP_PUTSP_LOOP
+	LDR R2,R1,#0		; read the next two characters
+	LD R0,LOW_8_BITS	; use mask to get low byte
+	AND R0,R0,R2		; if low byte is NUL, quit printing
+	BRz TRAP_PUTSP_DONE
+	OUT			; otherwise print the low byte
+
+	AND R0,R0,#0		; shift high byte into R0
+	ADD R3,R0,#8
+TRAP_PUTSP_S_LOOP
+	ADD R0,R0,R0		; shift R0 left
+	ADD R2,R2,#0		; move MSB from R2 into R0
+	BRzp TRAP_PUTSP_MSB_0
+	ADD R0,R0,#1
+TRAP_PUTSP_MSB_0
+	ADD R2,R2,R2		; shift R2 left
+	ADD R3,R3,#-1
+	BRp TRAP_PUTSP_S_LOOP
+
+	ADD R0,R0,#0		; if high byte is NUL, quit printing
+	BRz TRAP_PUTSP_DONE
+	OUT			; otherwise print the low byte
+
+	ADD R1,R1,#1		; and keep going
+	BRnzp TRAP_PUTSP_LOOP
 
 TRAP_PUTSP_DONE
-        LDR R7, R6, #0       ; pop R7
-        ADD R6, R6, #1
-        LDR R3, R6, #0       ; pop R3
-        ADD R6, R6, #1
-        LDR R2, R6, #0       ; pop R2
-        ADD R6, R6, #1
-        LDR R1, R6, #0       ; pop R1
-        ADD R6, R6, #1
-        LDR R0, R6, #0       ; pop R0
-        ADD R6, R6, #1
-        RTI
+	LDR R7,R6,#0
+        ADD R6, R6, #1          ; Pop R7
+	LDR R3,R6,#0
+        ADD R6, R6, #1          ; Pop R3
+	LDR R2,R6,#0
+        ADD R6, R6, #1          ; Pop R2
+	LDR R1,R6,#0
+        ADD R6, R6, #1          ; Pop R1
+	LDR R0,R6,#0
+        ADD R6, R6, #1          ; Pop R0
+	RTI
 
 TRAP_HALT
         ; an infinite loop of lowering OS_MCR's MSB

@@ -74,7 +74,9 @@ impl PaneDisplay for ControlsPane {
                 // Micro Step Button
                 let micro_step_button = egui::Button::new("⤵ Micro Step")
                     .fill(theme.accent_color_tertiary);
-                if ui.add(micro_step_button).clicked() {
+                if ui.add(micro_step_button)
+                    .on_hover_text("Advance the emulator by one cycle. eg from Fetch -> Decode.")
+                    .clicked() {
                     let old_running = emulator.running();
                     emulator.start_running(); // Temporarily set to running
                     let _ = emulator.micro_step();
@@ -101,7 +103,9 @@ impl PaneDisplay for ControlsPane {
                 // Step Button
                 let step_button =
                     egui::Button::new("➡ Step").fill(theme.accent_color_tertiary);
-                if ui.add(step_button).clicked() {
+                if ui.add(step_button)
+                    .on_hover_text("Advance the emulator by an instruction fast forwarding all cycles until next fetch.")
+                    .clicked() {
                     let old_running = emulator.running();
                     emulator.start_running(); // Temporarily set to running
                     emulator.step();
@@ -128,14 +132,14 @@ impl PaneDisplay for ControlsPane {
 
             ui.separator();
 
-            // --- System Reset Group ---
 
-            // Reset Emulator State Button (Visually Distinct)
             let reset_button = egui::Button::new("🔄 Reset Emulator State")
                 .fill(theme.accent_color_negative)
                 .min_size(egui::vec2(ui.available_width() - theme.item_spacing.x * 2.0, 0.0)); // Full width button
 
-            if ui.add(reset_button).clicked() {
+            if ui.add(reset_button)
+                .on_hover_text("Resets CPU, memory, and devices. Execution speed and Skip OS settings are preserved.")
+                .clicked() {
                 let current_skip_os = emulator.skip_os_emulation; // Preserve this setting
                 let current_speed = emulator.speed; // Preserve speed setting
 
@@ -143,8 +147,7 @@ impl PaneDisplay for ControlsPane {
                 emulator.skip_os_emulation = current_skip_os; // Restore
                 emulator.speed = current_speed; // Restore
 
-
-
+                emulator.metadata.last_compiled_source = Vec::new(); // This removes the compiled succsesfully message
             }
             ui.small("Resets CPU, memory, and devices. Execution speed and Skip OS settings are preserved.");
         });
