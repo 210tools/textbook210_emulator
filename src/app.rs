@@ -257,7 +257,7 @@ impl eframe::App for EmulatorApp {
                     use egui::{Hyperlink, RichText};
 
                     ui.label("It seems you have bad fps on the web version of the tool. The desktop version is likely to run far better. You can find downloads");
-                    ui.add(Hyperlink::from_label_and_url(RichText::new("here").strong(), "https://github.com/JackCrumpLeys/textbook210_emulator/releases/tag/main").open_in_new_tab(true));
+                    ui.add(Hyperlink::from_label_and_url(RichText::new("here").strong(), "https://github.com/210tools/textbook210_emulator/releases/tag/main").open_in_new_tab(true));
                     ui.label(".");
                 });
                 ui.separator();
