@@ -3393,6 +3393,7 @@ dependencies = [
  "js-sys",
  "lazy_static",
  "log",
+ "num-traits",
  "rfd",
  "ron 0.10.1",
  "rustc-hash 2.1.1",

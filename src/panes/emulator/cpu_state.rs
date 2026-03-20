@@ -2,8 +2,10 @@ use crate::emulator::micro_op::EguiDisplay;
 use crate::emulator::{CpuState, Emulator, EmulatorCell, MCR_ADDR, PSR_ADDR};
 use crate::panes::{Pane, PaneDisplay, PaneTree, RealPane};
 use crate::theme::ThemeSettings;
+use core::fmt;
 use egui::{Response, RichText};
 use serde::{Deserialize, Serialize};
+use std::fmt::{Formatter, UpperHex};
 use std::ops::RangeInclusive;
 
 use super::EmulatorPane;
@@ -63,8 +65,15 @@ fn register_view(
             debug_assert!(n.is_finite());
             debug_assert!(n <= i16::MAX as f64);
             debug_assert!(n >= i16::MIN as f64);
+            let n = n as i16;
             match display_base {
-                16 => format!("{:04X}", n as u16),
+                16 => {
+                    if (n as u16) & 0x8000 != 0 {
+                        format!("-{:04X}", (!(n as u16)) + 1)
+                    } else {
+                        format!("{:04X}", n as i16)
+                    }
+                }
                 10 => format!("{}", n as i16),
                 2 => format!("{:016b}", n as u16),
                 _ => String::new(),
