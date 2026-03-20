@@ -11,13 +11,13 @@ all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 [dependencies]
-egui = { git = "https://github.com/emilk/egui", rev = "81b7e7f05a6b03fa2cd5bdc6d4ce5f598e16c628", features = [
+egui = {version = "0.33", features = [
     "serde",
 ] }
-egui_extras = { git = "https://github.com/emilk/egui", rev = "81b7e7f05a6b03fa2cd5bdc6d4ce5f598e16c628", features = [
+egui_extras = { version = "0.33", features = [
     "serde",
 ] }
-egui_code_editor = { git = "https://github.com/JackCrumpLeys/egui_code_editor" }
+egui_code_editor = "0.2.21"
 eframe = { default-features = false, features = [
     "accesskit",     # Make egui compatible with screen readers. NOTE: adds a lot of dependencies.
     "default_fonts", # Embed the default egui fonts.
@@ -25,9 +25,9 @@ eframe = { default-features = false, features = [
     "persistence",   # Enable restoring app state when restarting the app.
     "wayland",       # To support Linux (and CI)
     "x11",
-], git = "https://github.com/emilk/egui", rev = "81b7e7f05a6b03fa2cd5bdc6d4ce5f598e16c628" }
+], version = "0.33"}
 log = "0.4"
-egui_dock = { git = "https://github.com/JackCrumpLeys/egui_dock" }
+egui_dock = "0.18"
 rustc-hash = "*"
 indexmap = "2.7"
 tracing = {version = "0.1", features=["release_max_level_info"]}
@@ -44,6 +44,8 @@ serde = { version = "1", features = ["derive"] }
 console_error_panic_hook = "0.1.7"
 web-sys = { version = "0.3.70", features = ["Window"] }
 ron = "0.10.1"
+rfd = "0.17.2"
+egui_phosphor_icons = "0.2.0"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -53,10 +55,12 @@ env_logger = "0.11"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
 web-sys = "0.3.70"           # to access the DOM (to hide the loading text)
+js-sys = "0.3"
 
 [profile.release]
 opt-level = 3
 lto = "fat"
+codegen-units = 1
 
 # Optimize all dependencies even in debug builds:
 [profile.dev.package."*"]

@@ -381,8 +381,6 @@ impl MemoryArea {
                 MemoryArea::UserSpace => true,
                 MemoryArea::DeviceRegisters => false,
             },
-            // Supervisor generally can write, but maybe some areas mabye read-only even for supervisor (trap table for safety?)
-            // Let's assume supervisor can write everywhere for now, adjust if needed.
             PrivilegeLevel::Supervisor => true,
         }
     }

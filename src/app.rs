@@ -5,7 +5,7 @@ use crate::{
     panes::{EmulatorPane, Pane, PaneDisplay, PaneTree, RealPane},
     theme::{BaseThemeChoice, ThemeSettings},
 };
-use egui::Theme;
+use egui::{Color32, Hyperlink, RichText, Theme};
 use egui_dock::{AllowedSplits, DockArea, DockState, NodeIndex, Style, SurfaceIndex, TabViewer};
 use lazy_static::lazy_static;
 
@@ -138,6 +138,8 @@ pub struct EmulatorApp {
     /// This struct provides interface between out pane tree and actual things like
     /// render and title. See [PaneManager]
     tree_behavior: PaneManager,
+    /// Defualts to false and is set to true on the closing of the first run info panel
+    first_open: bool,
 
     #[cfg(target_arch = "wasm32")]
     /// Have we clicked ok on the fps warning? This will mean it does not spawn for the rest of the session
@@ -200,6 +202,7 @@ impl Default for EmulatorApp {
         Self {
             dock_state,
             tree_behavior: PaneManager::default(),
+            first_open: true,
             #[cfg(target_arch = "wasm32")]
             has_dismissed_fps: false,
             #[cfg(target_arch = "wasm32")]
@@ -219,6 +222,16 @@ impl EmulatorApp {
 
         let mut app = Self::default();
 
+        if let Some(storage) = cc.storage {
+            if let Some(first_open) = eframe::get_value(storage, "first_open") {
+                app.first_open = first_open;
+            }
+        }
+
+        let mut fonts = egui::FontDefinitions::default();
+        egui_phosphor_icons::add_fonts(&mut fonts);
+        cc.egui_ctx.set_fonts(fonts);
+
         app.theme
             .set_global_theme(BaseThemeChoice::Dark, Some(&cc.egui_ctx));
         app.tree_behavior.theme = app.theme.clone();
@@ -228,7 +241,9 @@ impl EmulatorApp {
 
 impl eframe::App for EmulatorApp {
     /// Called by the frame work to save state before shutdown.
-    fn save(&mut self, _storage: &mut dyn eframe::Storage) {} // TODO: implement save logic
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, "first_open", &self.first_open);
+    }
 
     /// Called each time the UI needs repainting, which may be many times per second.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -249,12 +264,28 @@ impl eframe::App for EmulatorApp {
             }
         }
 
+        if self.first_open {
+            egui::Modal::new("Welcome to the tool!".into()).show(ctx, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.heading("It looks like you haven't used the tool before!");
+                    ui.label("Use the 'UI' menu in the top bar to toggle the scale if things look too small or large.");
+                    ui.horizontal(|ui| {
+                        ui.label("Developed with ");
+                        ui.label( egui_phosphor_icons::icons::HEART.fill().color(Color32::RED));
+                        ui.add(Hyperlink::from_label_and_url(RichText::new("by Jack Crump-Leys").strong(), "https://jack.crump-leys.com").open_in_new_tab(true));
+                   });
+                    if ui.button("Got it!").clicked() {
+                        self.first_open= false;
+                    }
+                });
+            });
+        }
+
         #[cfg(target_arch = "wasm32")]
         if self.curr_bad_fps_prompt_open {
             // TODO: use a modal
             egui::Modal::new("Bad fps detected".into()).show(ctx, |ui| {
                 ui.horizontal_wrapped(|ui| {
-                    use egui::{Hyperlink, RichText};
 
                     ui.label("It seems you have bad fps on the web version of the tool. The desktop version is likely to run far better. You can find downloads");
                     ui.add(Hyperlink::from_label_and_url(RichText::new("here").strong(), "https://github.com/210tools/textbook210_emulator/releases/tag/main").open_in_new_tab(true));
@@ -279,6 +310,7 @@ impl eframe::App for EmulatorApp {
                         if ui.button("Quit").clicked() {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                         }
+                        if ui.button("Load").clicked() {}
                     });
                     ui.add_space(16.0);
                 }

@@ -156,7 +156,7 @@ impl PaneDisplay for MemoryPane {
             .body(|mut body| {
                 let item_spacing = body.ui_mut().spacing().item_spacing;
 
-                body.rows(text_height, 0xFFFF, |mut row| {
+                body.rows(text_height, 0xFFFF + 1, |mut row| {
                     let row_index = row.index();
 
                     let memory_cell = &mut emulator.memory[row_index];
