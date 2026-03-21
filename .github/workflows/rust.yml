@@ -158,7 +158,11 @@ jobs:
       - name: Install mac toolchain for x86 mac
         if: matrix.TARGET == 'x86_64-apple-darwin'
         run: rustup target add x86_64-apple-darwin
-      
+
+      - name: Install windows toolchain for x86 windows
+        if: matrix.TARGET == 'x86_64-pc-windows-msvc'
+        run: rustup target add x86_64-pc-windows-msvc
+        
       - name: Build
         run: |
           cross build --verbose --release --target=${{ matrix.TARGET }}
