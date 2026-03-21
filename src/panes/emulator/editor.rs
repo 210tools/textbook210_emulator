@@ -216,8 +216,8 @@ impl PaneDisplay for EditorPane {
                                     {
                                         let array = js_sys::Array::new();
                                         array.push(&wasm_bindgen::JsValue::from_str(&content));
-                                        let mut options = web_sys::BlobPropertyBag::new();
-                                        options.type_("text/plain");
+                                        let options = web_sys::BlobPropertyBag::new();
+                                        options.set_type("text/plain");
                                         if let Ok(blob) =
                                             web_sys::Blob::new_with_str_sequence_and_options(
                                                 &array, &options,
@@ -230,9 +230,9 @@ impl PaneDisplay for EditorPane {
                                                 a.set_download(
                                                     self.file_name
                                                         .as_ref()
-                                                        .map_or("program.asm", |v| &*v),
+                                                        .map_or("program.asm", |v| v),
                                                 );
-                                                let _ = a.click();
+                                                a.click();
                                                 let _ = web_sys::Url::revoke_object_url(&url);
                                             }
                                         }
