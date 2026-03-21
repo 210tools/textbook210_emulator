@@ -249,7 +249,7 @@ impl eframe::App for EmulatorApp {
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, "first_open", &self.first_open);
-        eframe::set_value(storage, "first_open", &self.scale);
+        eframe::set_value(storage, "scale", &self.scale);
     }
 
     /// Called each time the UI needs repainting, which may be many times per second.
