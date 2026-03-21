@@ -140,6 +140,8 @@ pub struct EmulatorApp {
     tree_behavior: PaneManager,
     /// Defualts to false and is set to true on the closing of the first run info panel
     first_open: bool,
+    /// The ui scale
+    scale: f32,
 
     #[cfg(target_arch = "wasm32")]
     /// Have we clicked ok on the fps warning? This will mean it does not spawn for the rest of the session
@@ -210,6 +212,7 @@ impl Default for EmulatorApp {
             #[cfg(target_arch = "wasm32")]
             curr_bad_fps_prompt_open: false,
             theme,
+            scale: 1.0,
         }
     }
 }
@@ -225,6 +228,9 @@ impl EmulatorApp {
         if let Some(storage) = cc.storage {
             if let Some(first_open) = eframe::get_value(storage, "first_open") {
                 app.first_open = first_open;
+            }
+            if let Some(scale) = eframe::get_value(storage, "scale") {
+                app.scale = scale;
             }
         }
 
@@ -243,6 +249,7 @@ impl eframe::App for EmulatorApp {
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, "first_open", &self.first_open);
+        eframe::set_value(storage, "first_open", &self.scale);
     }
 
     /// Called each time the UI needs repainting, which may be many times per second.
@@ -326,11 +333,11 @@ impl eframe::App for EmulatorApp {
 
                 ui.menu_button("UI", |ui| {
                     // slider for ui scale
-                    let mut scale = ctx.zoom_factor();
-                    let res = ui.add(egui::Slider::new(&mut scale, 0.5..=5.0).text("UI Scale"));
+                    let res =
+                        ui.add(egui::Slider::new(&mut self.scale, 0.5..=5.0).text("UI Scale"));
                     if !res.dragged() && res.changed() {
-                        tracing::info!("Setting new UI scale: {}", scale);
-                        ctx.set_zoom_factor(scale);
+                        tracing::info!("Setting new UI scale: {}", self.scale);
+                        ctx.set_zoom_factor(self.scale);
                     }
                     // TODO: Probably should do our own
                     egui::widgets::global_theme_preference_buttons(ui);
