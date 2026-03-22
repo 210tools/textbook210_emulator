@@ -399,17 +399,16 @@ LOOP:
         "Simple Counter",
         r#"; Program that counts from 1 to 5
 .ORIG x3000
-AND R0, R0, #0     ; Clear R0 (counter)
-ADD R0, R0, #1     ; Start at 1
+AND R1, R1, #0     ; Clear R0 (counter)
+ADD R1, R1, #1     ; Start at 1
 LD R3, ASCII_0     ; Load base char for print
 
 LOOP:
-    ADD R1, R0, #0  ; Copy counter to R1
-    ADD R1, R1, R3  ; Convert to ASCII ('0' + number)
+    ADD R0, R1, R3  ; Convert to ASCII ('0' + number)
     OUT             ; Print the digit
 
-    ADD R0, R0, #1  ; Increment counter
-    ADD R2, R0, #-6 ; Check if counter > 5
+    ADD R1, R1, #1  ; Increment counter
+    ADD R2, R1, #-6 ; Check if counter > 5
     BRn LOOP        ; Continue if negative
 
 HALT               ; Stop execution

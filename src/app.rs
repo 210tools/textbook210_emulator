@@ -238,6 +238,8 @@ impl EmulatorApp {
         egui_phosphor_icons::add_fonts(&mut fonts);
         cc.egui_ctx.set_fonts(fonts);
 
+        cc.egui_ctx.set_zoom_factor(app.scale);
+
         app.theme
             .set_global_theme(BaseThemeChoice::Dark, Some(&cc.egui_ctx));
         app.tree_behavior.theme = app.theme.clone();
@@ -335,7 +337,7 @@ impl eframe::App for EmulatorApp {
                     // slider for ui scale
                     let res =
                         ui.add(egui::Slider::new(&mut self.scale, 0.5..=5.0).text("UI Scale"));
-                    if !res.dragged() && res.changed() {
+                    if !res.dragged() && self.scale != ctx.zoom_factor() {
                         tracing::info!("Setting new UI scale: {}", self.scale);
                         ctx.set_zoom_factor(self.scale);
                     }
