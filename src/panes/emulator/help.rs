@@ -399,7 +399,7 @@ LOOP:
         "Simple Counter",
         r#"; Program that counts from 1 to 5
 .ORIG x3000
-AND R1, R1, #0     ; Clear R0 (counter)
+AND R1, R1, #0     ; Clear R1 (counter)
 ADD R1, R1, #1     ; Start at 1
 LD R3, ASCII_0     ; Load base char for print
 
