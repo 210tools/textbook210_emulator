@@ -10,7 +10,7 @@ pub struct ControlsPane {
 
 impl Default for ControlsPane {
     fn default() -> Self {
-        Self { speed: 30 }
+        Self { speed: 1000 }
     }
 }
 

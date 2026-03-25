@@ -310,7 +310,6 @@ impl eframe::App for EmulatorApp {
             // TODO: use a modal
             egui::Modal::new("Bad fps detected".into()).show(ctx, |ui| {
                 ui.horizontal_wrapped(|ui| {
-
                     ui.label("It seems you have bad fps on the web version of the tool. The desktop version is likely to run far better. You can find downloads");
                     ui.add(Hyperlink::from_label_and_url(RichText::new("here").strong(), "https://github.com/210tools/textbook210_emulator/releases/tag/main").open_in_new_tab(true));
                     ui.label(".");
