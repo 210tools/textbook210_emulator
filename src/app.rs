@@ -311,6 +311,7 @@ impl eframe::App for EmulatorApp {
         }
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+            
             #[allow(deprecated)] // idk what egui is on about here (Being a silly billy thats what)
             egui::menu::bar(ui, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
@@ -344,6 +345,12 @@ impl eframe::App for EmulatorApp {
                     // TODO: Probably should do our own
                     egui::widgets::global_theme_preference_buttons(ui);
                 });
+            });
+
+            #[cfg(target_arch = "wasm32")]
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                let fps = 1. / ctx.input(|i| i.stable_dt);
+                ui.label(format!("Fps: {fps}"));
             });
         });
 
