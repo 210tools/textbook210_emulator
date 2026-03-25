@@ -311,7 +311,6 @@ impl eframe::App for EmulatorApp {
         }
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            
             #[allow(deprecated)] // idk what egui is on about here (Being a silly billy thats what)
             egui::menu::bar(ui, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
