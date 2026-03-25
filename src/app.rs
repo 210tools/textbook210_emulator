@@ -1,3 +1,5 @@
+#[cfg(target_arch = "wasm32")]
+use std::collections::VecDeque;
 use std::{ops::DerefMut, sync::Mutex};
 
 use crate::{
@@ -152,6 +154,9 @@ pub struct EmulatorApp {
     #[cfg(target_arch = "wasm32")]
     /// Is the bad fps prompt open?
     curr_bad_fps_prompt_open: bool,
+    #[cfg(target_arch = "wasm32")]
+    /// Rolling FPS samples used to smooth the displayed/read fps value.
+    fps_samples: VecDeque<f32>,
     theme: ThemeSettings,
 }
 
@@ -211,6 +216,8 @@ impl Default for EmulatorApp {
             bad_fps_score: 0,
             #[cfg(target_arch = "wasm32")]
             curr_bad_fps_prompt_open: false,
+            #[cfg(target_arch = "wasm32")]
+            fps_samples: VecDeque::with_capacity(10),
             theme,
             scale: 1.0,
         }
@@ -260,13 +267,21 @@ impl eframe::App for EmulatorApp {
         let _update_guard = update_span.enter();
 
         #[cfg(target_arch = "wasm32")]
+        let avg_fps = {
+            let fps = (1.0 / ctx.input(|i| i.stable_dt)).max(0.0);
+            self.fps_samples.push_back(fps);
+            while self.fps_samples.len() > 10 {
+                self.fps_samples.pop_front();
+            }
+
+            self.fps_samples.iter().copied().sum::<f32>() / self.fps_samples.len() as f32
+        };
+
+        #[cfg(target_arch = "wasm32")]
         if !self.has_dismissed_fps {
             use std::cmp::max;
-            // This gets the fps as the number we know and love (1s/xdt gets the amount of x we need to reach 1s (frames per second)).
-            // (This is ONLY accruate for the web becuase we use a constant framerate (we call `ctx.request_repaint()`))
-            let fps = 1. / ctx.input(|i| i.stable_dt);
             // Clamp to a min of 0 and score based on differnce from 50 (anything lower than 50 will add to the score)
-            self.bad_fps_score = max(0, self.bad_fps_score as i32 + 50 - fps as i32) as u32;
+            self.bad_fps_score = max(0, self.bad_fps_score as i32 + 50 - avg_fps as i32) as u32;
 
             if self.bad_fps_score >= 300 {
                 self.curr_bad_fps_prompt_open = true;
@@ -348,8 +363,7 @@ impl eframe::App for EmulatorApp {
 
             #[cfg(target_arch = "wasm32")]
             ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-                let fps = 1. / ctx.input(|i| i.stable_dt);
-                ui.label(format!("Fps: {fps}"));
+                ui.label(format!("Fps: {:.0}", avg_fps));
             });
         });
 
