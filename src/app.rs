@@ -1,4 +1,3 @@
-#[cfg(target_arch = "wasm32")]
 use std::collections::VecDeque;
 use std::{ops::DerefMut, sync::Mutex};
 
@@ -154,7 +153,6 @@ pub struct EmulatorApp {
     #[cfg(target_arch = "wasm32")]
     /// Is the bad fps prompt open?
     curr_bad_fps_prompt_open: bool,
-    #[cfg(target_arch = "wasm32")]
     /// Rolling FPS samples used to smooth the displayed/read fps value.
     fps_samples: VecDeque<f32>,
     theme: ThemeSettings,
@@ -216,7 +214,6 @@ impl Default for EmulatorApp {
             bad_fps_score: 0,
             #[cfg(target_arch = "wasm32")]
             curr_bad_fps_prompt_open: false,
-            #[cfg(target_arch = "wasm32")]
             fps_samples: VecDeque::with_capacity(10),
             theme,
             scale: 1.0,
@@ -266,8 +263,7 @@ impl eframe::App for EmulatorApp {
         let update_span = tracing::info_span!("EmulatorApp::update");
         let _update_guard = update_span.enter();
 
-        #[cfg(target_arch = "wasm32")]
-        let avg_fps = {
+        let _avg_fps = {
             let fps = (1.0 / ctx.input(|i| i.stable_dt)).max(0.0);
             self.fps_samples.push_back(fps);
             while self.fps_samples.len() > 10 {
@@ -287,6 +283,18 @@ impl eframe::App for EmulatorApp {
                 self.curr_bad_fps_prompt_open = true;
             }
         }
+        let feedback = |ui: &mut egui::Ui| {
+            ui.add(
+                Hyperlink::from_label_and_url(
+                    RichText::new("If you see bugs or have any feedback please tell us.")
+                        .strong()
+                        .underline()
+                        .color(Color32::RED),
+                    "https://forms.gle/78o4qEPmsBipbsFx7",
+                )
+                .open_in_new_tab(true),
+            );
+        };
 
         if self.first_open {
             egui::Modal::new("Welcome to the tool!".into()).show(ctx, |ui| {
@@ -298,6 +306,7 @@ impl eframe::App for EmulatorApp {
                         ui.label( egui_phosphor_icons::icons::HEART.fill().color(Color32::RED));
                         ui.add(Hyperlink::from_label_and_url(RichText::new("by Jack Crump-Leys").strong(), "https://jack.crump-leys.com").open_in_new_tab(true));
                    });
+                   feedback(ui);
                     if ui.button("Got it!").clicked() {
                         self.first_open= false;
                     }
@@ -358,11 +367,9 @@ impl eframe::App for EmulatorApp {
                     // TODO: Probably should do our own
                     egui::widgets::global_theme_preference_buttons(ui);
                 });
-            });
-
-            #[cfg(target_arch = "wasm32")]
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-                ui.label(format!("Fps: {:.0}", avg_fps));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                    feedback(ui);
+                });
             });
         });
 
