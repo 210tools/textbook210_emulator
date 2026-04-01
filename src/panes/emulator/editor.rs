@@ -144,7 +144,7 @@ impl PaneDisplay for EditorPane {
             let button_color = blend(just_compiled, base, fade);
 
             ui.horizontal(|ui| {
-                let button = egui::Button::new("Compile").fill(button_color);
+                let button = egui::Button::new("Compile & load").fill(button_color);
                 if ui.add(button).clicked() {
                     let data_to_load =
                         Emulator::parse_program(&self.program, Some(&mut emulator.metadata));

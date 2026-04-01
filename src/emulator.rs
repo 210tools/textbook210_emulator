@@ -442,7 +442,7 @@ impl Emulator {
                     let current_pc = self.pc.get() as usize;
 
                     if self.breakpoints.contains(&current_pc)
-                        && self.halted_on_breakpoint == false
+                        && !self.halted_on_breakpoint
                         && matches!(self.cpu_state, CpuState::Fetch)
                     // Break before fetching the instruction at the breakpoint
                     {
