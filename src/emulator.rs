@@ -61,6 +61,8 @@ pub struct Emulator {
     pub currently_executing: usize,
     /// Has the machine been halted by the OS/program
     pub halted: bool,
+    /// Is the machine currently on a breakpoint and has alreaddy halted once from it
+    pub halted_on_breakpoint: bool,
     // -----------------------------------------
 
     // Why in a Box? Becuase array sits on stack and takes alot of memory.
@@ -111,6 +113,7 @@ impl Emulator {
     pub fn new() -> Emulator {
         let mut emulator = Self {
             halted: false,
+            halted_on_breakpoint: false,
             speed: 1,
             ticks_between_updates: 2,
             tick: 0,
@@ -266,12 +269,12 @@ impl Emulator {
 
 #[derive(Debug, Default, Clone, Copy)]
 /// The core data structure for the emulator. Every value is stored via this using .get() and .set(). Stores a LC3 word (16 bits) and wether that word has changed
-pub struct EmulatorCell(u16, bool);
+pub struct EmulatorCell(u16);
 
 impl EmulatorCell {
     #[inline(always)]
     pub fn new(value: u16) -> Self {
-        Self(value, true)
+        Self(value)
     }
 
     /// get the word
@@ -285,22 +288,7 @@ impl EmulatorCell {
     pub fn set(&mut self, value: u16) {
         if value != self.0 {
             self.0 = value;
-            self.1 = true;
         }
-    }
-
-    /// Check if value has changed, reseting changed.
-    #[inline(always)]
-    pub fn changed(&mut self) -> bool {
-        let changed = self.1;
-        self.1 = false;
-        changed
-    }
-
-    /// Check if value has changed without reseting changed.
-    #[inline(always)]
-    pub fn changed_peek(&self) -> bool {
-        self.1
     }
 
     /// Sign extend from bit position to 16 bits
@@ -320,7 +308,7 @@ impl EmulatorCell {
             // -1 = 00001111
             // ! = 11110000
             let mask = !((1 << (bit_pos + 1)) - 1);
-            Self(value | mask, true)
+            Self(value | mask)
         } else {
             *self
         }
@@ -454,17 +442,21 @@ impl Emulator {
                     let current_pc = self.pc.get() as usize;
 
                     if self.breakpoints.contains(&current_pc)
+                        && self.halted_on_breakpoint == false
                         && matches!(self.cpu_state, CpuState::Fetch)
-                    // Break *before* fetching the instruction at the breakpoint
+                    // Break before fetching the instruction at the breakpoint
                     {
                         self.stop_running();
                         log::info!("Breakpoint hit at address 0x{current_pc:04X}");
+                        self.halted_on_breakpoint = true;
                         break;
                     }
 
                     changed = true;
                     let _ = self.micro_step();
                     i += 1;
+
+                    self.halted_on_breakpoint = false;
 
                     if i >= self.speed {
                         break;
@@ -792,7 +784,7 @@ pub trait BitAddressable {
 impl BitAddressable for EmulatorCell {
     fn index(&self, addr: u8) -> Self {
         assert!(addr < 16, "Address out of range");
-        Self((self.0 >> addr) & 1, true)
+        Self((self.0 >> addr) & 1)
     }
 
     fn range(&self, slice: Range<u8>) -> Self {
@@ -802,6 +794,6 @@ impl BitAddressable for EmulatorCell {
         let end = slice.end;
         let width = (start + 1) - end;
         let mask = ((1 << width) - 1) << end;
-        Self((self.0 & mask) >> end, true)
+        Self((self.0 & mask) >> end)
     }
 }

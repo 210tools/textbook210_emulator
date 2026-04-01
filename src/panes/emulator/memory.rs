@@ -301,12 +301,16 @@ impl PaneDisplay for MemoryPane {
 
                     // ASCII Column
                     row.col(|ui| {
-                        let ascii_char = char::from_u32((memory_cell.get() & 0xFF) as u32)
-                            .filter(|c| c.is_ascii_graphic() || *c == ' ') // Show printable ASCII or space
-                            .map(|c| format!("'{c}'"))
-                            .unwrap_or_default();
+                        // only print ascci in rage x0000-x00FF
+                        if memory_cell.get() & 0xFF00 == 0 {
+                            let ascii_char = char::from_u32((memory_cell.get() & 0xFF) as u32)
+                                .filter(|c| c.is_ascii_graphic() || *c == ' ') // Show printable ASCII or space
+                                .map(|c| format!("'{c}'"))
+                                .unwrap_or_default();
 
-                        ui.label(RichText::new(ascii_char).monospace().weak()); // Weak color for less emphasis
+                            ui.label(RichText::new(ascii_char).monospace().weak());
+                            // Weak color for less emphasis
+                        }
                     });
                 });
             });

@@ -548,6 +548,16 @@
 ;------------------------------------------------------------------------------
 
 OS_START    ; machine starts executing at x0200
+        ; Push any preset registers preserving start state
+        ST R0, OS_START_R0
+        ST R1, OS_START_R1
+        ST R2, OS_START_R2
+        ST R3, OS_START_R3
+        ST R4, OS_START_R4
+        ST R5, OS_START_R5
+        ST R6, OS_START_R6
+        ST R7, OS_START_R7
+
         ; Initialize stack pointer
         LD R6, OS_SP
 
@@ -578,7 +588,26 @@ OS_START    ; machine starts executing at x0200
         AND R0, R0, #0
         AND R1, R1, #0
 
+        ; restore any preset registers preserving start state
+        LD R0, OS_START_R0
+        LD R1, OS_START_R1
+        LD R2, OS_START_R2
+        LD R3, OS_START_R3
+        LD R4, OS_START_R4
+        LD R5, OS_START_R5 ; For now we wont do this for R6 as it is a special register for stack pointer
+        LD R7, OS_START_R7
+
         RTI ; This will pop our pc and psr and use it to run the program
+
+OS_START_R0        .FILL 0
+OS_START_R1        .FILL 0
+OS_START_R2        .FILL 0
+OS_START_R3        .FILL 0
+OS_START_R4        .FILL 0
+OS_START_R5        .FILL 0
+OS_START_R6        .FILL 0
+OS_START_R7        .FILL 0
+
 
 OS_START_MSG    .STRINGZ "Simple LC-3 OS v1.0\n\n"
 

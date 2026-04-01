@@ -151,10 +151,14 @@ impl PaneDisplay for EditorPane {
                     if let Ok(ParseOutput {
                         machine_code,
                         orig_address,
+                        breakpoints,
                         ..
                     }) = data_to_load
                     {
                         emulator.flash_memory(machine_code, orig_address);
+                        for b in breakpoints {
+                            emulator.breakpoints.insert(b);
+                        }
                         self.fade = 1.0;
                         self.last_compilation_was_successful = true;
                     } else {

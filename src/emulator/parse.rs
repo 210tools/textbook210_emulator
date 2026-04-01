@@ -514,6 +514,8 @@ pub struct ParseOutput {
     pub labels: HashMap<String, usize>,
     /// The starting memory address specified by the .ORIG directive.
     pub orig_address: usize,
+    /// The locations of halt instructions, used to insert breakpoints
+    pub breakpoints: Vec<usize>,
     address_to_line: HashMap<usize, usize>,
 }
 
@@ -556,11 +558,23 @@ impl Parser {
         )?;
 
         Ok(ParseOutput {
-            machine_code,
             line_to_address,
             address_to_line,
             labels,
             orig_address,
+            breakpoints: machine_code
+                .iter()
+                .enumerate()
+                // 0xF025 is TRAP - x25 which is halt
+                .filter_map(|(i, c)| {
+                    if *c == 0xF025 {
+                        Some(i + orig_address)
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+            machine_code,
         })
     }
 
@@ -1507,8 +1521,6 @@ impl Emulator {
     ) -> Result<ParseOutput, ParseError> {
         let span = tracing::info_span!("parse_program", program_length = program.len());
         let _guard = span.enter();
-
-        tracing::info!("starting to parse program");
 
         // step 1: tokenize the input
         let lexer = Lexer::new(program);

@@ -86,11 +86,11 @@ impl TabViewer for PaneManager {
     }
 
     /// If the pane is not one of multiple tabs we can close it
-    fn closeable(&mut self, tab: &mut Self::Tab) -> bool {
+    fn is_closeable(&self, tab: &Self::Tab) -> bool {
         !tab.alone
     }
 
-    /// We can only drag a pane out to make a window if it is alone
+    /// We can only drag a pane out to make a window if it is not alone
     fn allowed_in_windows(&self, tab: &mut Self::Tab) -> bool {
         !tab.alone
     }
@@ -99,10 +99,15 @@ impl TabViewer for PaneManager {
     /// then those could have catagorys and the leaf is a pane to be added along with the name of the
     /// button to add it. See [PaneTree].
     fn add_popup(&mut self, ui: &mut egui::Ui, surface: egui_dock::SurfaceIndex, node: NodeIndex) {
-        ui.set_min_width(60.0); // this is vaguely the size of the "Panes" button
+        ui.set_min_width(80.0); // this is vaguely the size of the "Emulator" button
         ui.style_mut().visuals.button_frame = false;
 
-        self.add_pane_menu_items(ui, Pane::children());
+        for pane in match Pane::children() {
+            PaneTree::Pane(s, pane) => vec![PaneTree::Pane(s, pane)],
+            PaneTree::Children(_, pane_trees) => pane_trees,
+        } {
+            self.add_pane_menu_items(ui, pane);
+        }
         self.last_added = Some((node, surface));
     }
 }
@@ -179,11 +184,11 @@ impl Default for EmulatorApp {
         let cpu_pane = Pane::new(RealPane::EmulatorPanes(Box::new(EmulatorPane::Cpu(
             crate::panes::emulator::cpu_state::CpuStatePane::default(),
         ))));
-        let _help_pane = Pane::new(RealPane::EmulatorPanes(Box::new(EmulatorPane::Help(
+        let help_pane = Pane::new(RealPane::EmulatorPanes(Box::new(EmulatorPane::Help(
             crate::panes::emulator::help::HelpPane::default(),
         ))));
 
-        let mut dock_state = DockState::new(vec![editor_pane]);
+        let mut dock_state = DockState::new(vec![editor_pane, help_pane]);
         let root_id = NodeIndex::root();
 
         let ed_id = dock_state
@@ -263,7 +268,7 @@ impl eframe::App for EmulatorApp {
         let update_span = tracing::info_span!("EmulatorApp::update");
         let _update_guard = update_span.enter();
 
-        let _avg_fps = {
+        let avg_fps = {
             let fps = (1.0 / ctx.input(|i| i.stable_dt)).max(0.0);
             self.fps_samples.push_back(fps);
             while self.fps_samples.len() > 10 {
@@ -316,7 +321,6 @@ impl eframe::App for EmulatorApp {
 
         #[cfg(target_arch = "wasm32")]
         if self.curr_bad_fps_prompt_open {
-            // TODO: use a modal
             egui::Modal::new("Bad fps detected".into()).show(ctx, |ui| {
                 ui.horizontal_wrapped(|ui| {
                     ui.label("It seems you have bad fps on the web version of the tool. The desktop version is likely to run far better. You can find downloads");
@@ -369,6 +373,7 @@ impl eframe::App for EmulatorApp {
                 });
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
                     feedback(ui);
+                    ui.label(format!("Fps: {:.0}", avg_fps));
                 });
             });
         });

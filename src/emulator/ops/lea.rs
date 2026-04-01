@@ -7,9 +7,8 @@ use super::Op;
 #[derive(Debug, Clone)]
 /// Load the effective adress of some offset from PC
 pub struct LeaOp {
-    pub dr: EmulatorCell,                // Destination Register index
-    pub pc_offset: EmulatorCell,         // PCoffset9 (sign-extended)
-    pub effective_address: EmulatorCell, // Calculated address
+    pub dr: EmulatorCell,        // Destination Register index
+    pub pc_offset: EmulatorCell, // PCoffset9 (sign-extended)
 }
 
 impl MicroOpGenerator for LeaOp {
@@ -39,11 +38,7 @@ impl Op for LeaOp {
         // Extract and sign-extend PCoffset9 during decode
         let pc_offset = ir.range(8..0).sext(8);
 
-        Self {
-            dr,
-            pc_offset,
-            effective_address: EmulatorCell::new(0), // Initialize
-        }
+        Self { dr, pc_offset }
     }
 }
 
@@ -60,13 +55,6 @@ impl std::fmt::Display for LeaOp {
             self.pc_offset.get() & 0x1FF
         )?;
 
-        if self.effective_address.get() != 0 {
-            write!(
-                f,
-                " [Calculated addr: x{:04X}]",
-                self.effective_address.get()
-            )?;
-        }
         Ok(())
     }
 }
