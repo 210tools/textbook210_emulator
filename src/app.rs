@@ -1782,6 +1782,9 @@ impl eframe::App for EmulatorApp {
                     .unwrap_or_else(|| "dropped.asm".to_string())
             };
             if let Some(content) = content {
+                #[cfg(target_arch = "wasm32")]
+                let doc = Document::new(name, content);
+                #[cfg(not(target_arch = "wasm32"))]
                 let mut doc = Document::new(name, content);
                 #[cfg(not(target_arch = "wasm32"))]
                 {

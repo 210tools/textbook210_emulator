@@ -1,4 +1,5 @@
 use egui::{Color32, CornerRadius, Stroke, Style, Vec2, Visuals};
+#[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
 use ron;
 use serde::{Deserialize, Serialize};
 
