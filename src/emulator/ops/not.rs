@@ -22,7 +22,7 @@ impl MicroOpGenerator for NotOp {
                 // Execute phase
                 plan.insert(
                     CycleState::Execute,
-                    vec![micro_op!(ALU_OUT <- NOT R(sr.get()))],
+                    vec![MicroOp::State(9), micro_op!(ALU_OUT <- NOT R(sr.get()))],
                 );
 
                 // Store Result phase

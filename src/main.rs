@@ -32,8 +32,8 @@ fn main() -> eframe::Result {
         .init();
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([400.0, 300.0])
-            .with_min_inner_size([300.0, 220.0])
+            .with_inner_size([1440.0, 900.0])
+            .with_min_inner_size([640.0, 400.0])
             .with_icon(
                 // NOTE: Adding an icon is optional
                 eframe::icon_data::from_png_bytes(&include_bytes!("../assets/icon-256.png")[..])
@@ -110,6 +110,27 @@ fn main() {
             .expect("Failed to find the_canvas_id - ensure HTML is properly configured")
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .expect("the_canvas_id was not a HtmlCanvasElement - check element type");
+        // Stop the browser acting on the shortcuts the editor uses (Ctrl+F would open the
+        // browser's find bar, Ctrl+D would bookmark the page, ...). F5 and everything else
+        // keep their normal browser behaviour.
+        {
+            let keydown =
+                Closure::<dyn FnMut(web_sys::KeyboardEvent)>::new(|e: web_sys::KeyboardEvent| {
+                    if (e.ctrl_key() || e.meta_key()) && !e.alt_key() {
+                        let k = e.key().to_ascii_lowercase();
+                        if matches!(
+                            k.as_str(),
+                            "b" | "d" | "f" | "g" | "h" | "/" | "enter" | " "
+                        ) {
+                            e.prevent_default();
+                        }
+                    }
+                });
+            let _ = document
+                .add_event_listener_with_callback("keydown", keydown.as_ref().unchecked_ref());
+            keydown.forget();
+        }
+
         let start_result = eframe::WebRunner::new()
             .start(
                 canvas,
@@ -150,7 +171,12 @@ fn main() {
         let g = f.clone();
 
         *g.borrow_mut() = Some(Closure::new(move || {
-            update();
+            // Only repaint the UI when the machine actually changed
+            if update() {
+                if let Some(ctx) = tools_for_210::app::EGUI_CTX.lock().unwrap().as_ref() {
+                    ctx.request_repaint();
+                }
+            }
 
             // Schedule ourself for another requestAnimationFrame callback.
             request_animation_frame(f.borrow().as_ref().unwrap());

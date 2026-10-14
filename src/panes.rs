@@ -1,5 +1,7 @@
 pub mod emulator;
+pub mod glossary;
 pub mod tools;
+pub mod ui_kit;
 
 use egui::mutex::Mutex;
 pub use emulator::EmulatorPane;

@@ -18,10 +18,6 @@ pub enum JsrMode {
 pub struct JsrOp {
     /// are we looking at jst or jsrr?
     pub mode: JsrMode,
-    /// Where we boutta jump?
-    pub target_address: EmulatorCell, // Calculated during evaluate_address
-    /// Can we jump to teh place we going?
-    pub is_valid_jump: bool, // Set during evaluate_address
 }
 
 impl MicroOpGenerator for JsrOp {
@@ -32,15 +28,18 @@ impl MicroOpGenerator for JsrOp {
         plan.insert(
             CycleState::EvaluateAddress,
             vec![
-                micro_op!(R(7) <- PC), // Save return address in R7
+                // state 4 tests IR[11]; state 21 or 20 does R7 <- PC and loads PC in one cycle,
+                // so the target is computed from the old R7 (JSRR R7 must work)
+                MicroOp::State(4),
+                MicroOp::State(match &self.mode {
+                    JsrMode::Relative { .. } => 21,
+                    JsrMode::Register { .. } => 20,
+                }),
                 match &self.mode {
-                    JsrMode::Relative { pc_offset } => {
-                        micro_op!(ALU_OUT <- PC + PCOFFSET(pc_offset.get() as i16))
-                    }
-                    JsrMode::Register { base_r } => {
-                        micro_op!(Temp <- R(base_r.get()))
-                    }
+                    JsrMode::Relative { pc_offset } => MicroOp::addr_pc(pc_offset.get() as i16, 11),
+                    JsrMode::Register { base_r } => MicroOp::addr_reg(base_r.get(), 0, 0),
                 },
+                micro_op!(R(7) <- PC), // Save return address in R7
             ],
         );
 
@@ -48,11 +47,8 @@ impl MicroOpGenerator for JsrOp {
         plan.insert(
             CycleState::Execute,
             vec![
-                micro_op!(MSG format!("Jump to subroutine at target address")),
-                match &self.mode {
-                    JsrMode::Relative { .. } => micro_op!(PC <- AluOut),
-                    JsrMode::Register { .. } => micro_op!(PC <- Temp),
-                },
+                micro_op!(MSG "Jump to subroutine at target address".to_string()),
+                micro_op!(PC <- AddrOut),
             ],
         );
 
@@ -75,11 +71,7 @@ impl Op for JsrOp {
             JsrMode::Register { base_r }
         };
 
-        Self {
-            mode,
-            target_address: EmulatorCell::new(0),
-            is_valid_jump: false,
-        }
+        Self { mode }
     }
 }
 
@@ -103,13 +95,6 @@ impl fmt::Display for JsrOp {
                 // JSRR: Display with base register
                 write!(f, "JSRR R{}", base_r.get())?;
             }
-        }
-        if self.is_valid_jump {
-            write!(f, " [jumping")?;
-            if self.target_address.get() != 0 {
-                write!(f, " to x{:04X}", self.target_address.get())?;
-            }
-            write!(f, "]")?;
         }
         Ok(())
     }

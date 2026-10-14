@@ -7,13 +7,8 @@ use super::Op;
 #[derive(Debug, Clone)]
 /// Store some register value at `mem[mem[pc+pc_offset]]`
 pub struct StiOp {
-    pub sr: EmulatorCell,               // Source Register index
-    pub pc_offset: EmulatorCell,        // PCoffset9 (sign-extended)
-    pub pointer_address: EmulatorCell,  // Address containing the final address
-    pub indirect_address: EmulatorCell, // The final address loaded from pointer_address (set in execute)
-    pub value_to_store: EmulatorCell,   // Value from SR to be stored (set in execute)
-    pub is_valid_read_step1: bool,      // Flag if pointer_address is valid to read from
-    pub is_valid_write_step2: bool, // Flag if indirect_address is valid to write to (set in execute)
+    pub sr: EmulatorCell,        // Source Register index
+    pub pc_offset: EmulatorCell, // PCoffset9 (sign-extended)
 }
 
 impl MicroOpGenerator for StiOp {
@@ -23,19 +18,32 @@ impl MicroOpGenerator for StiOp {
         // Evaluate Address phase - calculate pointer address
         plan.insert(
             CycleState::EvaluateAddress,
-            vec![micro_op!(ALU_OUT <- PC + PCOFFSET(self.pc_offset.get() as i16))],
+            vec![
+                MicroOp::State(11),
+                MicroOp::addr_pc(self.pc_offset.get() as i16, 9),
+            ],
         );
 
         // Fetch Operands phase - read pointer to get final address
-        plan.insert(CycleState::FetchOperands, vec![micro_op!(MAR <- AluOut)]);
+        plan.insert(
+            CycleState::FetchOperands,
+            vec![
+                micro_op!(MAR <- AddrOut),
+                MicroOp::State(19),
+                MicroOp::State(29),
+            ],
+        );
         // Memory read happens implicitly: MDR <- MEM[MAR] (gets indirect address)
 
         // Store Result phase - trigger memory write
         plan.insert(
             CycleState::StoreResult,
             vec![
-                micro_op!(MAR <- MDR),              // Set MAR to indirect address
+                MicroOp::State(31),
+                micro_op!(MAR <- MDR), // Set MAR to indirect address
+                MicroOp::State(23),
                 micro_op!(MDR <- R(self.sr.get())), // Load value to store
+                MicroOp::State(16),
                 micro_op!(SET_FLAG(WriteMemory)),
             ],
         );
@@ -54,11 +62,6 @@ impl Op for StiOp {
         Self {
             sr: ir.range(11..9),
             pc_offset,
-            pointer_address: EmulatorCell::new(0),
-            indirect_address: EmulatorCell::new(0),
-            value_to_store: EmulatorCell::new(0),
-            is_valid_read_step1: false,
-            is_valid_write_step2: false,
         }
     }
 }
@@ -67,8 +70,6 @@ use std::fmt;
 impl fmt::Display for StiOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Display based on the state after decode (sr and pc_offset are known)
-        // indirect_address, value_to_store, etc., are determined later
-        // and are not part of the basic instruction format.
 
         let sr_index = self.sr.get();
         // Sign-extend the 9-bit offset for correct decimal representation
@@ -81,16 +82,6 @@ impl fmt::Display for StiOp {
             offset_val,                   // Display signed decimal offset
             self.pc_offset.get() & 0x1FF  // Display raw 9-bit hex offset
         )?;
-
-        if self.is_valid_read_step1 && self.is_valid_write_step2 {
-            write!(
-                f,
-                " [storing {:04X} to mem[mem[{:04X}]] = mem[{:04X}]]",
-                self.value_to_store.get(),
-                self.pointer_address.get(),
-                self.indirect_address.get()
-            )?;
-        }
         Ok(())
     }
 }

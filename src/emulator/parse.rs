@@ -516,7 +516,8 @@ pub struct ParseOutput {
     pub orig_address: usize,
     /// The locations of halt instructions, used to insert breakpoints
     pub breakpoints: Vec<usize>,
-    address_to_line: HashMap<usize, usize>,
+    /// Map from each generated address back to its (1-based) source line
+    pub address_to_line: HashMap<usize, usize>,
 }
 
 pub struct Parser {
@@ -639,7 +640,7 @@ impl Parser {
                     } else {
                         // Treat as an opcode or standalone label
                         // For first pass, we just need to calculate address increments
-                        *address = address.checked_add(1).ok_or((
+                        *address = address.checked_add(1).filter(|a| *a <= 0x10000).ok_or((
                             format!("Address overflow past 0xFFFF on line {line}"),
                             token_span,
                         ))?;
@@ -715,7 +716,7 @@ impl Parser {
                             }
 
                             // .FILL takes one word
-                            *address = address.checked_add(1).ok_or((
+                            *address = address.checked_add(1).filter(|a| *a <= 0x10000).ok_or((
                                 format!("Address overflow past 0xFFFF on line {line}"),
                                 token_span,
                             ))?;
@@ -769,10 +770,13 @@ impl Parser {
                                 block_size
                             );
 
-                            *address = address.checked_add(block_size as usize).ok_or((
-                                format!("Address overflow past 0xFFFF on line {line}"),
-                                token_span,
-                            ))?;
+                            *address = address
+                                .checked_add(block_size as usize)
+                                .filter(|a| *a <= 0x10000)
+                                .ok_or((
+                                    format!("Address overflow past 0xFFFF on line {line}"),
+                                    token_span,
+                                ))?;
 
                             // Skip directive and size
                             self.position += 2;
@@ -805,10 +809,13 @@ impl Parser {
                                         string_size
                                     );
 
-                                    *address = address.checked_add(string_size).ok_or((
-                                        format!("Address overflow past 0xFFFF on line {line}"),
-                                        token_span,
-                                    ))?;
+                                    *address = address
+                                        .checked_add(string_size)
+                                        .filter(|a| *a <= 0x10000)
+                                        .ok_or((
+                                            format!("Address overflow past 0xFFFF on line {line}"),
+                                            token_span,
+                                        ))?;
                                 }
                                 _ => {
                                     return Err((
@@ -839,7 +846,7 @@ impl Parser {
                     }
 
                     // Instructions take one word
-                    *address = address.checked_add(1).ok_or((
+                    *address = address.checked_add(1).filter(|a| *a <= 0x10000).ok_or((
                         format!("Address overflow past 0xFFFF on line {line}"),
                         token_span,
                     ))?;

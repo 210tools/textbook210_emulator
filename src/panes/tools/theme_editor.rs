@@ -825,7 +825,7 @@ fn render_general_ui_preview(ui: &mut Ui, settings: &ThemeSettings) {
     ui.label("Window Background:");
     egui::Frame::default()
         .fill(settings.window_background)
-        .stroke(Stroke::new(1.0, settings.primary_text_color))
+        .stroke(Stroke::new(1.0_f32, settings.primary_text_color))
         .inner_margin(5.0)
         .show(ui, |ui| {
             ui.label(
@@ -835,7 +835,7 @@ fn render_general_ui_preview(ui: &mut Ui, settings: &ThemeSettings) {
     ui.label("Panel Background:");
     egui::Frame::default()
         .fill(settings.panel_background)
-        .stroke(Stroke::new(1.0, settings.primary_text_color))
+        .stroke(Stroke::new(1.0_f32, settings.primary_text_color))
         .inner_margin(5.0)
         .show(ui, |ui| {
             ui.label(
@@ -908,7 +908,7 @@ fn show_semantic_block(ui: &mut Ui, label: &str, text_color: Color32, bg_color: 
     ui.label(format!("{label}:"));
     egui::Frame::NONE
         .fill(bg_color)
-        .stroke(Stroke::new(1.0, text_color.gamma_multiply(0.5)))
+        .stroke(Stroke::new(1.0_f32, text_color.gamma_multiply(0.5)))
         .inner_margin(egui::Margin::same(5))
         .show(ui, |ui| {
             ui.label(
@@ -1326,7 +1326,7 @@ fn render_look_and_feel_preview(ui: &mut Ui, settings: &ThemeSettings) {
     ui.painter().hline(
         rect.x_range(),
         rect.center().y,
-        Stroke::new(1.0, settings.separator_color),
+        Stroke::new(1.0_f32, settings.separator_color),
     );
 
     ui.separator();

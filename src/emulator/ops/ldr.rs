@@ -7,11 +7,9 @@ use super::Op;
 #[derive(Debug, Clone)]
 /// load from given register and offset Mem[Base_r + offset6]
 pub struct LdrOp {
-    pub dr: EmulatorCell,                // Destination Register index
-    pub base_r: EmulatorCell,            // Base Register index
-    pub offset6: EmulatorCell,           // offset6 (sign-extended)
-    pub effective_address: EmulatorCell, // Calculated address
-    pub is_valid_load: bool,             // Flag if the address is valid to read from
+    pub dr: EmulatorCell,      // Destination Register index
+    pub base_r: EmulatorCell,  // Base Register index
+    pub offset6: EmulatorCell, // offset6 (sign-extended)
 }
 
 impl MicroOpGenerator for LdrOp {
@@ -21,17 +19,28 @@ impl MicroOpGenerator for LdrOp {
         // Evaluate Address phase - calculate effective address from base + offset
         plan.insert(
             CycleState::EvaluateAddress,
-            vec![micro_op!(ALU_OUT <- R(self.base_r.get()) + IMM(self.offset6.get() as i16))],
+            vec![
+                MicroOp::State(6),
+                MicroOp::addr_reg(self.base_r.get(), self.offset6.get() as i16, 6),
+            ],
         );
 
         // Fetch Operands phase - set MAR for memory read
-        plan.insert(CycleState::FetchOperands, vec![micro_op!(MAR <- AluOut)]);
+        plan.insert(
+            CycleState::FetchOperands,
+            vec![
+                micro_op!(MAR <- AddrOut),
+                MicroOp::State(35),
+                MicroOp::State(25),
+            ],
+        );
         // Memory read MDR <- MEM[MAR] happens implicitly between phases
 
         // Store Result phase - move loaded value to destination register
         plan.insert(
             CycleState::StoreResult,
             vec![
+                MicroOp::State(27),
                 micro_op!(R(self.dr.get()) <- MDR),
                 micro_op!(SET_CC(self.dr.get())),
             ],
@@ -53,8 +62,6 @@ impl Op for LdrOp {
             dr,
             base_r,
             offset6,
-            effective_address: EmulatorCell::new(0),
-            is_valid_load: false,
         }
     }
 }
@@ -72,14 +79,6 @@ impl fmt::Display for LdrOp {
             f,
             "LDR R{dr_index}, R{base_r_index}, #{offset_val_signed} (x{offset_val_raw:02X})"
         )?;
-
-        if self.is_valid_load {
-            write!(f, " [loading")?;
-            if self.effective_address.get() != 0 {
-                write!(f, " from x{:04X}", self.effective_address.get())?;
-            }
-            write!(f, "]")?;
-        }
         Ok(())
     }
 }

@@ -7,12 +7,8 @@ use super::Op;
 #[derive(Debug, Clone)]
 /// Load indirectly from an offset so we load Mem[Mem[PC + PCoffset9]]
 pub struct LdiOp {
-    pub dr: EmulatorCell,               // Destination Register index
-    pub pc_offset: EmulatorCell,        // PCoffset9 (sign-extended)
-    pub pointer_address: EmulatorCell,  // Address containing the final address
-    pub indirect_address: EmulatorCell, // The final address loaded from pointer_address
-    pub is_valid_load_step1: bool,      // Flag if pointer_address is valid to read from
-    pub is_valid_load_step2: bool,      // Flag if indirect_address is valid to read from
+    pub dr: EmulatorCell,        // Destination Register index
+    pub pc_offset: EmulatorCell, // PCoffset9 (sign-extended)
 }
 
 impl MicroOpGenerator for LdiOp {
@@ -22,14 +18,19 @@ impl MicroOpGenerator for LdiOp {
         // Evaluate Address phase - calculate pointer address
         plan.insert(
             CycleState::EvaluateAddress,
-            vec![micro_op!(ALU_OUT <- PC + PCOFFSET(self.pc_offset.get() as i16))],
+            vec![
+                MicroOp::State(10),
+                MicroOp::addr_pc(self.pc_offset.get() as i16, 9),
+            ],
         );
 
         // Fetch Operands phase - first memory read for pointer
         plan.insert(
             CycleState::FetchOperands,
             vec![
-                micro_op!(MAR <- AluOut),
+                micro_op!(MAR <- AddrOut),
+                MicroOp::State(17),
+                MicroOp::State(24),
                 // First memory read happens implicitly: MDR <- MEM[MAR]
             ],
         );
@@ -38,7 +39,10 @@ impl MicroOpGenerator for LdiOp {
         plan.insert(
             CycleState::Execute,
             vec![
+                MicroOp::State(26),
                 micro_op!(MAR <- MDR),
+                MicroOp::State(35),
+                MicroOp::State(25),
                 // Second memory read happens implicitly: MDR <- MEM[MAR]
             ],
         );
@@ -47,6 +51,7 @@ impl MicroOpGenerator for LdiOp {
         plan.insert(
             CycleState::StoreResult,
             vec![
+                MicroOp::State(27),
                 micro_op!(R(self.dr.get()) <- MDR),
                 micro_op!(SET_CC(self.dr.get())),
             ],
@@ -63,14 +68,7 @@ impl Op for LdiOp {
         // Extract and sign-extend PCoffset9
         let pc_offset = ir.range(8..0).sext(8);
 
-        Self {
-            dr,
-            pc_offset,
-            pointer_address: EmulatorCell::new(0),
-            indirect_address: EmulatorCell::new(0),
-            is_valid_load_step1: false,
-            is_valid_load_step2: false,
-        }
+        Self { dr, pc_offset }
     }
 }
 
@@ -88,15 +86,6 @@ impl fmt::Display for LdiOp {
             offset_val,
             self.pc_offset.get() & 0x1FF // Mask to 9 bits for hex
         )?;
-
-        if self.is_valid_load_step1 && self.is_valid_load_step2 {
-            write!(
-                f,
-                " [taking mem[mem[{:04X}]] = mem[{:04X}]]",
-                self.pointer_address.get(),
-                self.indirect_address.get()
-            )?;
-        }
         Ok(())
     }
 }

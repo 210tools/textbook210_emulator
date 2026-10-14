@@ -13,10 +13,11 @@
 - Device I/O through keyboard and display registers
 
 ### 🔍 Debugging Capabilities
-- **Step-by-Step Execution**: Execute one instruction or micro-operation at a time
-- **CPU State Visualization**: See the processor cycle in action with color-coded state transitions
-- **Breakpoints**: Set breakpoints at specific memory addresses
-- **Machine Code Display**: View the assembled binary representation of your program
+- **Step by instruction or by state**: Step over, into and out of instructions, or micro step one state of the book's state machine (one clock cycle) at a time, and step back a state
+- **Datapath view**: Figure C.8 of the book, with each state's wires, parts and control signals lit as it runs
+- **Breakpoints**: Click the editor gutter or the memory pane
+- **Interrupts**: Pick a polling OS or an interrupt-driven OS (Run → Operating system) to compare how they read the keyboard
+- **Editor**: Syntax highlighting, errors as you type, completion, hover docs, find and replace, several files at once
 
 ### 🧰 Additional Tools
 - **Base Converter**: Convert between different number bases (binary, decimal, hex)
@@ -37,21 +38,15 @@ You can download the standalone application for offline use from the [releases p
 
 ## 📝 Quick Guide
 
-Every small task uses different panes, you can drag pains around by their top tab. Here is the basics:
+Every small task uses different panes; drag panes around by their tabs, or add one with the + on a tab bar. The basics:
 
-1. **Write Code**: Use the Editor pane to write your LC-3 assembly code
-2. **Compile**: Click "Reset & Compile" to assemble your program \[Editor pane]
-3. **Run**: Use the control buttons to: \[control pane]
-   - "Run" - Execute continuously
-   - "Pause" - Stop execution
-   - "Step" - Execute one full instruction
-   - "Small Step" - Execute one micro-operation
-4. **Debug**: Use the Memory, Registers, and CPU State panes to inspect program state
-5. **Set Breakpoints**: Click the 🛑 button next to a line in the Machine Code view (TODO: move this to memory pane)
+1. **Write code** in the editor pane
+2. **Assemble** with Ctrl+B (or the Assemble button): the program is loaded and the machine resets
+3. **Run** with the toolbar: Run/Pause, Over, Into, Out, Micro (one state) and Back (one state back)
+4. **Inspect** the CPU and Memory panes, and View → Datapath to watch the datapath
+5. **Breakpoints**: click next to a line number in the editor, or next to an address in the memory pane
 
-
-### TODO: Add better help
-**The handy help pane has infomation on each pane and LC3 in general**
+The Help pane (and F1 for shortcuts) covers the rest.
 
 
 ## 📋 Technical Details
@@ -63,7 +58,8 @@ The emulator implements:
 - Privilege levels and memory protection
 - Trap routines for system services
 - Exception handling
-- Full OS support with a simple OS implementing everything the OS from the UOA COMPSCI-210 class
+- Full OS support with a simple OS implementing everything the OS from the UOA COMPSCI-210 class, in a polling and an interrupt-driven version
+- Keyboard interrupts through the book's state machine (states 18, 49, 45, 37 to 55)
 
 NOTE: The implementation of this emulator is based entirely on the 3rd edition of "Introduction to Computer Systems" by Yale n. patt and sanjay j. patel.
 

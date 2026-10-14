@@ -6,10 +6,8 @@ use super::Op;
 
 #[derive(Debug, Clone)]
 pub struct StOp {
-    pub sr: EmulatorCell,                // Source Register index
-    pub pc_offset: EmulatorCell,         // PCoffset9 (sign-extended)
-    pub effective_address: EmulatorCell, // Calculated address
-    pub is_valid_store: bool,            // Flag if the address is valid to write to
+    pub sr: EmulatorCell,        // Source Register index
+    pub pc_offset: EmulatorCell, // PCoffset9 (sign-extended)
 }
 
 impl MicroOpGenerator for StOp {
@@ -19,15 +17,20 @@ impl MicroOpGenerator for StOp {
         // Evaluate Address phase - calculate effective address
         plan.insert(
             CycleState::EvaluateAddress,
-            vec![micro_op!(ALU_OUT <- PC + PCOFFSET(self.pc_offset.get() as i16))],
+            vec![
+                MicroOp::State(3),
+                MicroOp::addr_pc(self.pc_offset.get() as i16, 9),
+            ],
         );
 
         // Store Result phase - trigger memory write
         plan.insert(
             CycleState::StoreResult,
             vec![
-                micro_op!(MAR <- AluOut),
+                micro_op!(MAR <- AddrOut),
+                MicroOp::State(23),
                 micro_op!(MDR <- R(self.sr.get())),
+                MicroOp::State(16),
                 micro_op!(SET_FLAG(WriteMemory)),
             ],
         );
@@ -42,12 +45,7 @@ impl Op for StOp {
         let sr = ir.range(11..9);
         let pc_offset = ir.range(8..0).sext(8);
 
-        Self {
-            sr,
-            pc_offset,
-            effective_address: EmulatorCell::new(0),
-            is_valid_store: false,
-        }
+        Self { sr, pc_offset }
     }
 }
 use std::fmt;
@@ -65,14 +63,6 @@ impl fmt::Display for StOp {
             offset_val,
             self.pc_offset.get() & 0x1FF // Mask to 9 bits for hex
         )?;
-
-        if self.is_valid_store {
-            write!(f, " [storing")?;
-            if self.effective_address.get() != 0 {
-                write!(f, " to x{:04X}", self.effective_address.get())?;
-            }
-            write!(f, "]")?;
-        }
         Ok(())
     }
 }

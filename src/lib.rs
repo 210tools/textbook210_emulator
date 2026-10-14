@@ -3,6 +3,7 @@
 
 pub mod app;
 pub mod emulator;
+pub mod examples;
 pub mod panes;
 pub mod theme;
 pub mod turing;

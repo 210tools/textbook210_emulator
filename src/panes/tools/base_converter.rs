@@ -1,3 +1,4 @@
+use crate::panes::glossary::Explain;
 use egui::RichText;
 use serde::{Deserialize, Serialize};
 
@@ -42,7 +43,7 @@ impl PaneDisplay for BaseConverter {
         if self.case_sensitive {
             ui.label(RichText::new("⚠ Note: Case sensitivity is enabled. ⚠")
                             .small()
-                            .color(ui.visuals().warn_fg_color)).on_hover_text("Case sensitivity is enabled.  You can change this behavior by toggling the 'Case Sensitive' checkbox.");
+                            .color(ui.visuals().warn_fg_color)).explain("Case sensitivity is enabled.  You can change this behavior by toggling the 'Case Sensitive' checkbox.");
         }
         ui.horizontal(|ui| {
             ui.text_edit_singleline(&mut self.input);

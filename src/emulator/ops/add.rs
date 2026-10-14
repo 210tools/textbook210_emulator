@@ -31,7 +31,10 @@ impl MicroOpGenerator for AddOp {
                 // Execute phase
                 plan.insert(
                     CycleState::Execute,
-                    vec![micro_op!(ALU_OUT <- R(sr1.get()) + IMM(imm5.sext(4).get() as i16))],
+                    vec![
+                        MicroOp::State(1),
+                        micro_op!(ALU_OUT <- R(sr1.get()) + IMM(imm5.sext(4).get() as i16)),
+                    ],
                 );
 
                 // Store Result phase
@@ -47,7 +50,10 @@ impl MicroOpGenerator for AddOp {
                 // Execute phase
                 plan.insert(
                     CycleState::Execute,
-                    vec![micro_op!(ALU_OUT <- R(sr1.get()) + R(sr2.get()))],
+                    vec![
+                        MicroOp::State(1),
+                        micro_op!(ALU_OUT <- R(sr1.get()) + R(sr2.get())),
+                    ],
                 );
 
                 // Store Result phase
@@ -135,7 +141,10 @@ mod tests {
         assert!(plan.contains_key(&CycleState::StoreResult));
 
         // Execute phase
-        let execute_ops = &plan[&CycleState::Execute];
+        let execute_ops: Vec<&MicroOp> = plan[&CycleState::Execute]
+            .iter()
+            .filter(|o| !matches!(o, MicroOp::State(_)))
+            .collect();
         assert_eq!(execute_ops.len(), 1);
 
         // Check ALU operation
@@ -184,7 +193,10 @@ mod tests {
         let plan = add_op.generate_plan();
 
         // Execute phase
-        let execute_ops = &plan[&CycleState::Execute];
+        let execute_ops: Vec<&MicroOp> = plan[&CycleState::Execute]
+            .iter()
+            .filter(|o| !matches!(o, MicroOp::State(_)))
+            .collect();
 
         // Check ALU operation with immediate
         match &execute_ops[0] {
@@ -210,7 +222,10 @@ mod tests {
         let plan = add_op.generate_plan();
 
         // Check ALU operation with negative immediate
-        let execute_ops = &plan[&CycleState::Execute];
+        let execute_ops: Vec<&MicroOp> = plan[&CycleState::Execute]
+            .iter()
+            .filter(|o| !matches!(o, MicroOp::State(_)))
+            .collect();
         match &execute_ops[0] {
             MicroOp::Alu {
                 operation,

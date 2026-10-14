@@ -7,12 +7,9 @@ use super::Op;
 #[derive(Debug, Clone)]
 /// Store some register value at adress of some other register value
 pub struct StrOp {
-    pub sr: EmulatorCell,                // Source Register index
-    pub base_r: EmulatorCell,            // Base Register index
-    pub offset6: EmulatorCell,           // offset6 (sign-extended)
-    pub effective_address: EmulatorCell, // Calculated address
-    pub value_to_store: EmulatorCell,    // Value from SR (fetched in fetch_operands)
-    pub is_valid_store: bool,            // Flag if the address is valid to write to
+    pub sr: EmulatorCell,      // Source Register index
+    pub base_r: EmulatorCell,  // Base Register index
+    pub offset6: EmulatorCell, // offset6 (sign-extended)
 }
 
 impl MicroOpGenerator for StrOp {
@@ -22,15 +19,20 @@ impl MicroOpGenerator for StrOp {
         // Evaluate Address phase - calculate effective address from base + offset
         plan.insert(
             CycleState::EvaluateAddress,
-            vec![micro_op!(ALU_OUT <- R(self.base_r.get()) + IMM(self.offset6.get() as i16))],
+            vec![
+                MicroOp::State(7),
+                MicroOp::addr_reg(self.base_r.get(), self.offset6.get() as i16, 6),
+            ],
         );
 
         // Store Result phase - trigger memory write
         plan.insert(
             CycleState::StoreResult,
             vec![
-                micro_op!(MAR <- AluOut),
+                micro_op!(MAR <- AddrOut),
+                MicroOp::State(23),
                 micro_op!(MDR <- R(self.sr.get())),
+                MicroOp::State(16),
                 micro_op!(SET_FLAG(WriteMemory)),
             ],
         );
@@ -51,9 +53,6 @@ impl Op for StrOp {
             sr,
             base_r,
             offset6,
-            effective_address: EmulatorCell::new(0),
-            value_to_store: EmulatorCell::new(0),
-            is_valid_store: false,
         }
     }
 }
@@ -79,17 +78,6 @@ impl fmt::Display for StrOp {
             offset_val_sext, // Display sign-extended decimal
             offset_val_6bit  // Display raw 6-bit hex
         )?;
-
-        if self.is_valid_store {
-            write!(f, " [Storing")?;
-            if self.value_to_store.get() != 0 {
-                write!(f, " the value x{:04X}", self.effective_address.get())?;
-            }
-            if self.effective_address.get() != 0 {
-                write!(f, " into x{:04X}", self.effective_address.get())?;
-            }
-            write!(f, "]")?;
-        }
         Ok(())
     }
 }

@@ -32,7 +32,10 @@ impl MicroOpGenerator for AndOp {
                 // Execute phase
                 plan.insert(
                     CycleState::Execute,
-                    vec![micro_op!(ALU_OUT <- R(sr1.get()) & IMM(imm5.sext(4).get() as i16))],
+                    vec![
+                        MicroOp::State(5),
+                        micro_op!(ALU_OUT <- R(sr1.get()) & IMM(imm5.sext(4).get() as i16)),
+                    ],
                 );
 
                 // Store Result phase
@@ -48,7 +51,10 @@ impl MicroOpGenerator for AndOp {
                 // Execute phase
                 plan.insert(
                     CycleState::Execute,
-                    vec![micro_op!(ALU_OUT <- R(sr1.get()) & R(sr2.get()))],
+                    vec![
+                        MicroOp::State(5),
+                        micro_op!(ALU_OUT <- R(sr1.get()) & R(sr2.get())),
+                    ],
                 );
 
                 // Store Result phase

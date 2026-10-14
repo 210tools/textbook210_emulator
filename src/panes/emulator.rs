@@ -1,5 +1,5 @@
-pub mod controls;
 pub mod cpu_state;
+pub mod datapath;
 pub mod editor;
 pub mod help;
 pub mod io;
@@ -13,20 +13,20 @@ use super::PaneTree;
 use memory::MemoryPane;
 use serde::{Deserialize, Serialize};
 
-pub use controls::ControlsPane;
 pub use cpu_state::CpuStatePane;
 pub use editor::EditorPane;
 pub use help::HelpPane;
 pub use io::IoPane;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[expect(clippy::large_enum_variant)]
 pub enum EmulatorPane {
     Editor(EditorPane),
     Output(IoPane),
     Help(HelpPane),
-    Controls(ControlsPane),
     Cpu(CpuStatePane),
     Memory(MemoryPane),
+    Datapath(datapath::DatapathPane),
 }
 
 impl PaneDisplay for EmulatorPane {
@@ -35,9 +35,9 @@ impl PaneDisplay for EmulatorPane {
             EmulatorPane::Editor(pane) => pane.title(),
             EmulatorPane::Output(pane) => pane.title(),
             EmulatorPane::Help(pane) => pane.title(),
-            EmulatorPane::Controls(pane) => pane.title(),
             EmulatorPane::Cpu(pane) => pane.title(),
             EmulatorPane::Memory(pane) => pane.title(),
+            EmulatorPane::Datapath(pane) => pane.title(),
         }
     }
 
@@ -48,7 +48,7 @@ impl PaneDisplay for EmulatorPane {
             EmulatorPane::Help(pane) => pane.render(ui, emulator, theme),
             EmulatorPane::Cpu(pane) => pane.render(ui, emulator, theme),
             EmulatorPane::Memory(pane) => pane.render(ui, emulator, theme),
-            EmulatorPane::Controls(pane) => pane.render(ui, emulator, theme),
+            EmulatorPane::Datapath(pane) => pane.render(ui, emulator, theme),
         }
     }
 
@@ -59,9 +59,9 @@ impl PaneDisplay for EmulatorPane {
                 MemoryPane::children(),
                 EditorPane::children(),
                 CpuStatePane::children(),
+                datapath::DatapathPane::children(),
                 IoPane::children(),
                 HelpPane::children(),
-                ControlsPane::children(),
             ],
         )
     }

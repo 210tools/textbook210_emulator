@@ -1,5 +1,5 @@
 use crate::emulator::micro_op::{CycleState, MicroOp, MicroOpGenerator};
-use crate::emulator::{area_from_address, BitAddressable, Emulator, EmulatorCell, Exception};
+use crate::emulator::{BitAddressable, Emulator, EmulatorCell};
 use std::collections::HashMap;
 
 use super::Op;
@@ -15,79 +15,53 @@ pub struct BrOp {
     pub p_bit: EmulatorCell,
     /// Offset from pc to take if we match
     pub pc_offset: EmulatorCell,
-    /// Do the condition codes match and we are going to branch?
-    pub branch_taken: bool, // Set during evaluate_address
-    /// Where we boutta go
-    pub target_address: EmulatorCell, // Set during evaluate_address if branch_taken is true
 }
 
 impl MicroOpGenerator for BrOp {
     fn generate_plan(&self) -> HashMap<CycleState, Vec<MicroOp>> {
         let mut plan = HashMap::new();
-        // The branch condition depends on the processor status register (PSR), which is only known at execution time.
-        // Therefore, we calculate the potential address first, then use a custom micro-op to conditionally jump.
-
-        // Evaluate Address Phase: Calculate the potential target address.
-        plan.insert(
-            CycleState::EvaluateAddress,
-            vec![micro_op!(ALU_OUT <- PC + PCOFFSET(self.pc_offset.get() as i16))],
-        );
-
-        // Execute Phase: Use a custom micro-op to check conditions and update PC if necessary.
+        // Decode (state 32) computes BEN from IR[11:9] and the condition codes. State 0 tests it,
+        // and only a taken branch goes to state 22, which adds PCoffset9 to the PC.
         let n_cond = self.n_bit.get() == 1;
         let z_cond = self.z_bit.get() == 1;
         let p_cond = self.p_bit.get() == 1;
+        let offset = self.pc_offset.get() as i16;
 
         let mut if_cond = vec![];
-
         if n_cond {
-            if_cond.push("N == 1");
+            if_cond.push("N");
         }
         if z_cond {
-            if_cond.push("Z == 1");
+            if_cond.push("Z");
         }
         if p_cond {
-            if_cond.push("P == 1");
+            if_cond.push("P");
         }
-        let empty = if_cond.is_empty();
-        let if_cond = if_cond.join(" OR ");
-
-        let psudo_str = if empty {
-            "; for BR (No conditions) jump never triggers and always just go forward one step"
-                .to_string()
+        let pseudo_str = if if_cond.is_empty() {
+            "[BEN] is always 0: BR with no conditions never branches".to_string()
         } else {
-            format!(
-                "IF {if_cond}
-                        ALU_OUT <- PC + SEXT({})
-                        PC <- ALU_OUT",
-                self.pc_offset.get()
-            )
+            format!("[BEN] ({}): state 22 only if set", if_cond.join(" or "))
         };
 
         plan.insert(
             CycleState::Execute,
-            vec![MicroOp::new_custom(
-                move |emu: &mut Emulator| {
-                    let (psr_n, psr_z, psr_p) = emu.get_nzp();
-                    let branch_taken = (n_cond && psr_n) || (z_cond && psr_z) || (p_cond && psr_p);
-
-                    if branch_taken {
-                        // Branch is taken. The target address is in ALU_OUT.
-                        let target_address = emu.alu.alu_out;
-
-                        // Before jumping, check for memory access violations.
-                        let target_area = area_from_address(&target_address);
-                        if target_area.can_read(&emu.priv_level()) {
-                            emu.pc.set(target_address.get());
-                        } else {
-                            return Err(Exception::AccessControlViolation);
+            vec![
+                MicroOp::State(0),
+                MicroOp::new_custom(
+                    move |emu: &mut Emulator| {
+                        let (psr_n, psr_z, psr_p) = emu.get_nzp();
+                        let ben = (n_cond && psr_n) || (z_cond && psr_z) || (p_cond && psr_p);
+                        if !ben {
+                            emu.skip_state = Some(22);
                         }
-                    }
-                    // If branch is not taken, do nothing.
-                    Ok(())
-                },
-                psudo_str,
-            )],
+                        Ok(())
+                    },
+                    pseudo_str,
+                ),
+                MicroOp::State(22),
+                MicroOp::addr_pc(offset, 9),
+                micro_op!(PC <- AddrOut),
+            ],
         );
 
         plan
@@ -106,8 +80,6 @@ impl Op for BrOp {
             z_bit: ir.index(10),
             p_bit: ir.index(9),
             pc_offset,
-            branch_taken: false,
-            target_address: EmulatorCell::new(0),
         }
     }
 }
@@ -135,14 +107,6 @@ impl std::fmt::Display for BrOp {
             offset_val,
             self.pc_offset.get() & 0x1FF
         )?;
-
-        if self.branch_taken {
-            write!(f, " [branching")?;
-            if self.target_address.get() != 0 {
-                write!(f, " to x{:04X}", self.target_address.get())?;
-            }
-            write!(f, "]")?;
-        }
         Ok(())
     }
 }

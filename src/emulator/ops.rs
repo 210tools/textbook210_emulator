@@ -43,6 +43,8 @@ pub enum CpuState {
     FetchOperands(OpCode),    // Fetch operands from registers or memory
     ExecuteOperation(OpCode), // Perform the operation (ALU, branch check, PC update, etc.)
     StoreResult(OpCode),      // Write the result back to register or memory (if needed)
+    /// Running the exception entry sequence (Figure C.7: states 44, 13 or 48-61, then 45-55)
+    Exception,
 }
 
 impl Display for CpuState {
@@ -54,6 +56,7 @@ impl Display for CpuState {
             CpuState::FetchOperands(op) => write!(f, "Fetch Operands {op}"),
             CpuState::ExecuteOperation(op) => write!(f, "Execute Operation {op}"),
             CpuState::StoreResult(op) => write!(f, "Store Result {op}"),
+            CpuState::Exception => write!(f, "Exception"),
         }
     }
 }
@@ -87,6 +90,7 @@ impl CpuState {
             CpuState::FetchOperands(op_code) => Some(op_code),
             CpuState::ExecuteOperation(op_code) => Some(op_code),
             CpuState::StoreResult(op_code) => Some(op_code),
+            CpuState::Exception => None,
         }
         .cloned()
     }
@@ -98,7 +102,6 @@ impl OpCode {
     pub fn from_instruction(instruction: EmulatorCell) -> Option<OpCode> {
         let opcode_val = instruction.range(15..12).get();
 
-        debug_assert!(opcode_val != 0xd, "Tried to decode non-existant op");
         match opcode_val {
             // Call the specific decode method for each opcode
             0x1 => Some(OpCode::Add(AddOp::decode(instruction))),
@@ -118,6 +121,29 @@ impl OpCode {
             0xF => Some(OpCode::Trap(TrapOp::decode(instruction))),
             // Opcode 13 (0xD) is unused/reserved in standard LC-3.
             _ => None, // Return None for invalid/unused opcode
+        }
+    }
+}
+
+impl OpCode {
+    /// The micro-op plan generator for this instruction.
+    pub fn plan_generator(&self) -> &dyn crate::emulator::micro_op::MicroOpGenerator {
+        match self {
+            OpCode::Add(op) => op,
+            OpCode::And(op) => op,
+            OpCode::Br(op) => op,
+            OpCode::Jmp(op) => op,
+            OpCode::Jsr(op) => op,
+            OpCode::Ld(op) => op,
+            OpCode::Ldi(op) => op,
+            OpCode::Ldr(op) => op,
+            OpCode::Lea(op) => op,
+            OpCode::Not(op) => op,
+            OpCode::Rti(op) => op,
+            OpCode::St(op) => op,
+            OpCode::Sti(op) => op,
+            OpCode::Str(op) => op,
+            OpCode::Trap(op) => op,
         }
     }
 }

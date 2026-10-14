@@ -18,13 +18,16 @@ impl MicroOpGenerator for LeaOp {
         // Evaluate Address phase - calculate effective address
         plan.insert(
             CycleState::EvaluateAddress,
-            vec![micro_op!(ALU_OUT <- PC + PCOFFSET(self.pc_offset.get() as i16))],
+            vec![
+                MicroOp::State(14),
+                MicroOp::addr_pc(self.pc_offset.get() as i16, 9),
+            ],
         );
 
         // Store Result phase - store effective address in destination register
         plan.insert(
             CycleState::StoreResult,
-            vec![micro_op!(R(self.dr.get()) <- AluOut)],
+            vec![micro_op!(R(self.dr.get()) <- AddrOut)],
         );
 
         plan

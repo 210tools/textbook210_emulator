@@ -17,7 +17,6 @@ egui = {version = "0.33", features = [
 egui_extras = { version = "0.33", features = [
     "serde",
 ] }
-egui_code_editor = "0.2.21"
 eframe = { default-features = false, features = [
     "accesskit",     # Make egui compatible with screen readers. NOTE: adds a lot of dependencies.
     "default_fonts", # Embed the default egui fonts.
@@ -42,10 +41,10 @@ web-time = "1"
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
 console_error_panic_hook = "0.1.7"
-web-sys = { version = "0.3.70", features = ["Window"] }
+web-sys = { version = "0.3.70", features = ["Window", "KeyboardEvent", "EventTarget", "Document"] }
 ron = "0.10.1"
 rfd = "0.17.2"
-egui_phosphor_icons = "0.2.0"
+egui_phosphor_icons = { version = "0.2.0", default-features = false, features = ["fill"] }
 num-traits = "0.2.19"
 
 # native:

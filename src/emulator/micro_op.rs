@@ -90,6 +90,29 @@ pub enum DataSource {
     PSR,
     AluOut,
     Temp,
+    /// Output of the address adder (ADDR1MUX + ADDR2MUX)
+    AddrOut,
+    /// PC + 1, from the incrementer next to the PC
+    PcPlusOne,
+    /// PC - 1, from the decrementer above the PC (Figure C.8, GatePC-1)
+    PcMinusOne,
+    /// R6 + 1 / R6 - 1 from the stack pointer logic (Figure C.8, SPMUX, GateSP)
+    SpPlusOne,
+    SpMinusOne,
+    SavedSsp,
+    SavedUsp,
+    /// The trap/interrupt vector table entry address: Table (x00 or x01) concatenated with Vector
+    TableVector,
+    /// IR[7:0]
+    IrLow8,
+    /// An 8-bit constant fed to Table or Vector
+    Const8(u8),
+    /// The constant 0 (Set.Priv)
+    Zero,
+    /// INTV: the interrupting device's vector (the keyboard's is x80)
+    Intv,
+    /// The interrupting device's priority level (the keyboard's is 4)
+    IntPriority,
 
     Immediate(i16), // #{16 bit signed number}
     PCOffset(i16),
@@ -108,6 +131,19 @@ impl fmt::Display for DataSource {
             DataSource::PSR => write!(f, "PSR"),
             DataSource::AluOut => write!(f, "ALU_OUT"),
             DataSource::Temp => write!(f, "TEMP"),
+            DataSource::AddrOut => write!(f, "ADDR"),
+            DataSource::PcPlusOne => write!(f, "PC + 1"),
+            DataSource::PcMinusOne => write!(f, "PC - 1"),
+            DataSource::SpPlusOne => write!(f, "R6 + 1"),
+            DataSource::SpMinusOne => write!(f, "R6 - 1"),
+            DataSource::SavedSsp => write!(f, "Saved_SSP"),
+            DataSource::SavedUsp => write!(f, "Saved_USP"),
+            DataSource::TableVector => write!(f, "Table'Vector"),
+            DataSource::IrLow8 => write!(f, "IR[7:0]"),
+            DataSource::Intv => write!(f, "INTV"),
+            DataSource::IntPriority => write!(f, "Interrupt Priority"),
+            DataSource::Const8(v) => write!(f, "x{v:02X}"),
+            DataSource::Zero => write!(f, "0"),
 
             DataSource::Immediate(val) => write!(f, "#{val}"),
             DataSource::PCOffset(val) => write!(f, "#{val}"),
@@ -128,6 +164,18 @@ impl EguiDisplay for DataSource {
             DataSource::PSR => theme.register_device_name_color,
             DataSource::AluOut => theme.register_special_purpose_name_color,
             DataSource::Temp => theme.register_special_purpose_name_color,
+            DataSource::AddrOut => theme.register_special_purpose_name_color,
+            DataSource::PcPlusOne
+            | DataSource::PcMinusOne
+            | DataSource::SpPlusOne
+            | DataSource::SpMinusOne
+            | DataSource::SavedSsp
+            | DataSource::SavedUsp
+            | DataSource::TableVector
+            | DataSource::IrLow8
+            | DataSource::Intv
+            | DataSource::IntPriority => theme.register_special_purpose_name_color,
+            DataSource::Const8(_) | DataSource::Zero => theme.editor_literal_color,
 
             DataSource::Immediate(_) => theme.editor_literal_color,
             DataSource::PCOffset(_) => theme.editor_literal_color,
@@ -148,6 +196,14 @@ pub enum DataDestination {
     PSR,
     AluOut,
     Temp,
+    /// PSR[15], the privilege bit (Figure C.8, LD.Priv)
+    Priv,
+    SavedSsp,
+    SavedUsp,
+    Table,
+    Vector,
+    /// PSR[10:8], the running program's priority (Figure C.8, LD.Priority)
+    Priority,
 }
 
 impl fmt::Display for DataDestination {
@@ -161,6 +217,12 @@ impl fmt::Display for DataDestination {
             DataDestination::PSR => write!(f, "PSR"),
             DataDestination::AluOut => write!(f, "ALU_OUT"),
             DataDestination::Temp => write!(f, "TEMP"),
+            DataDestination::Priv => write!(f, "PSR[15]"),
+            DataDestination::SavedSsp => write!(f, "Saved_SSP"),
+            DataDestination::SavedUsp => write!(f, "Saved_USP"),
+            DataDestination::Table => write!(f, "Table"),
+            DataDestination::Vector => write!(f, "Vector"),
+            DataDestination::Priority => write!(f, "PSR[10:8]"),
         }
     }
 }
@@ -174,7 +236,12 @@ impl EguiDisplay for DataDestination {
             DataDestination::MDR => theme.register_special_purpose_name_color,
             DataDestination::PSR => theme.register_device_name_color,
             DataDestination::AluOut => theme.register_special_purpose_name_color,
-            DataDestination::Temp => theme.register_special_purpose_name_color,
+            DataDestination::Temp
+            | DataDestination::SavedSsp
+            | DataDestination::SavedUsp
+            | DataDestination::Table
+            | DataDestination::Vector => theme.register_special_purpose_name_color,
+            DataDestination::Priv | DataDestination::Priority => theme.register_device_name_color,
         })
     }
 }
@@ -221,11 +288,20 @@ impl EguiDisplay for MachineFlag {
 type CustomMicroOpFunction = Box<dyn Fn(&mut Emulator) -> Result<(), Exception> + Send + Sync>;
 
 /// A single, atomic CPU operation.
+#[derive(Clone)]
 pub enum MicroOp {
     /// Transfer data from source to destination
     Transfer {
         source: DataSource,
         destination: DataDestination,
+    },
+    /// Address adder: ADDR <- base (PC or a register, through ADDR1MUX) + the sign-extended
+    /// offset field of IR (through ADDR2MUX). `bits` is the width of that field (11, 9, 6, or 0
+    /// for no offset). Used by every instruction that computes an address.
+    Address {
+        base: DataSource,
+        offset: i16,
+        bits: u8,
     },
     /// transfer op1 and op2 to the alu populating the alu out with the result of the operation
     Alu {
@@ -239,11 +315,40 @@ pub enum MicroOp {
     SetFlag(MachineFlag),
     /// special op to provide metadata on ops.
     Message(String),
-    /// Do somthing not covered by other ops (if statement or messing with the psr)
+    /// Do something not covered by other ops (if statement or messing with the psr)
     Custom(Arc<CustomMicroOpFunction>, String),
+    /// The ops that follow happen in this state of the LC-3 state machine (Patt & Patel
+    /// Figures C.2 and C.7), i.e. in one clock cycle. Does nothing to the machine.
+    State(u8),
 }
 
 impl MicroOp {
+    /// ADDR <- PC + SEXT(offset field)
+    pub fn addr_pc(offset: i16, bits: u8) -> Self {
+        MicroOp::Address {
+            base: DataSource::PC,
+            offset,
+            bits,
+        }
+    }
+
+    /// ADDR <- R(base) + SEXT(offset field)
+    pub fn addr_reg(base: u16, offset: i16, bits: u8) -> Self {
+        MicroOp::Address {
+            base: DataSource::Register(base),
+            offset,
+            bits,
+        }
+    }
+
+    /// A transfer between two places (for sources and destinations the macro can't name)
+    pub fn transfer(destination: DataDestination, source: DataSource) -> Self {
+        MicroOp::Transfer {
+            source,
+            destination,
+        }
+    }
+
     pub fn new_custom<F>(f: F, display_code: String) -> Self
     where
         F: Fn(&mut Emulator) -> Result<(), Exception> + Send + Sync + 'static,
@@ -269,10 +374,18 @@ impl fmt::Display for MicroOp {
                 MAluOp::Not => write!(f, "ALU_OUT <- NOT {operand1}"),
                 _ => write!(f, "ALU_OUT <- {operand1} {operation} {operand2}"),
             },
+            MicroOp::Address { base, offset, bits } => {
+                if *bits == 0 {
+                    write!(f, "ADDR <- {base}")
+                } else {
+                    write!(f, "ADDR <- {base} + #{offset}")
+                }
+            }
             MicroOp::PhaseTransition(phase) => write!(f, "-> {phase}"),
             MicroOp::SetFlag(flag) => write!(f, "{flag}"),
             MicroOp::Message(msg) => write!(f, "[{msg}]"),
             MicroOp::Custom(_, s) => write!(f, "{s}"),
+            MicroOp::State(n) => write!(f, "; state {n}"),
         }
     }
 }
@@ -328,6 +441,30 @@ impl EguiDisplay for MicroOp {
                     s,
                 ),
             },
+            MicroOp::Address { base, offset, bits } => {
+                let mut parts = vec![
+                    RichText::new("ADDR")
+                        .color(theme.register_special_purpose_name_color)
+                        .into(),
+                    RichText::new(" <- ")
+                        .color(theme.cpu_state_data_flow_color)
+                        .into(),
+                    base.display(theme, s).into(),
+                ];
+                if *bits != 0 {
+                    parts.push(
+                        RichText::new(" + ")
+                            .color(theme.editor_directive_color)
+                            .into(),
+                    );
+                    parts.push(
+                        RichText::new(format!("#{offset}"))
+                            .color(theme.editor_literal_color)
+                            .into(),
+                    );
+                }
+                add_widget_text(parts, s)
+            }
             MicroOp::PhaseTransition(phase) => add_widget_text(
                 vec![
                     RichText::new("-> ")
@@ -344,6 +481,12 @@ impl EguiDisplay for MicroOp {
             MicroOp::Custom(_, s_custom) => RichText::new(s_custom)
                 .color(theme.editor_directive_color)
                 .into(),
+            MicroOp::State(n) => {
+                RichText::new(format!("state {n} · {}", super::states::state_text(*n)))
+                    .size(10.5)
+                    .color(theme.secondary_text_color)
+                    .into()
+            }
         }
     }
 }
